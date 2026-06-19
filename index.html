@@ -313,6 +313,23 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:14px 0}
 .highlight-value{font-family:'Bebas Neue',sans-serif;font-size:17px;color:var(--blue);letter-spacing:.5px;line-height:1.1}
 .highlight-sub{font-size:10px;color:var(--muted)}
 
+
+/* PER-GAME RANKING */
+.game-rank-section{margin-bottom:20px}
+.game-rank-header{background:var(--blue);color:#fff;border-radius:var(--r);padding:9px 14px;margin-bottom:8px;display:flex;align-items:center;gap:8px;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px}
+.game-rank-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px}
+.game-rank-table th{background:rgba(30,58,95,.08);color:var(--blue);font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:7px 11px;text-align:left;border-bottom:2px solid var(--border)}
+.game-rank-table td{padding:8px 11px;border-bottom:1px solid var(--neutral);vertical-align:middle}
+.game-rank-table tr:hover td{background:#F5F2EE}
+/* MULTI ARBITRE */
+.arb-multi-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.arb-multi-row:last-child{border-bottom:none}
+.arb-multi-name{color:#fff;font-size:13px;font-weight:600;flex:1;min-width:80px}
+.arb-multi-score{font-family:'Bebas Neue',sans-serif;font-size:42px;color:#fff;min-width:60px;text-align:center;line-height:1}
+.arb-multi-btn{background:#1E3A5F;border:none;color:#fff;border-radius:8px;width:44px;height:32px;font-size:18px;font-weight:700;cursor:pointer;transition:background .15s}
+.arb-multi-btn.plus{background:var(--green)}.arb-multi-btn.plus:hover{background:#22834C}
+.arb-multi-btn.minus{background:#333}.arb-multi-btn.minus:hover{background:#555}
+
 @media print{
   #app-header,#arbitre-view,#scoreboard-view,.btn,.tab-nav,.header-actions,.modal-overlay,.toast{display:none!important}
   body{background:#fff}.container{padding:0;max-width:100%}
@@ -368,25 +385,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:14px 0}
           style="background:#1E3A5F;border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:4px 8px;width:60px;text-align:center;font-size:13px">
       </div>
     </div>
-    <div class="arb-block">
-      <span class="arb-block-label">Scores</span>
-      <div class="arb-score-row">
-        <div class="arb-score-controls">
-          <button class="arb-score-btn plus" onclick="arbScoreChange('A',1)">+</button>
-          <div class="arb-score-val" id="arb-score-a">0</div>
-          <button class="arb-score-btn minus" onclick="arbScoreChange('A',-1)">−</button>
-          <div class="arb-team-lbl" id="arb-team-a-name">Équipe A</div>
-        </div>
-        <div style="color:rgba(255,255,255,.2);font-family:'Bebas Neue';font-size:26px">VS</div>
-        <div class="arb-score-controls">
-          <button class="arb-score-btn plus" onclick="arbScoreChange('B',1)">+</button>
-          <div class="arb-score-val" id="arb-score-b">0</div>
-          <button class="arb-score-btn minus" onclick="arbScoreChange('B',-1)">−</button>
-          <div class="arb-team-lbl" id="arb-team-b-name">Équipe B</div>
-        </div>
-      </div>
-      <button class="arb-save-btn" onclick="arbSaveScore()">💾 Enregistrer le score</button>
-    </div>
+    <div class="arb-block" id="arb-score-block"><span class="arb-block-label">Scores</span><div style="color:rgba(255,255,255,.4);font-size:13px;padding:10px 0">Sélectionnez un match pour commencer.</div></div>
   </div>
 </div>
 
@@ -454,7 +453,6 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:14px 0}
         <button class="btn btn-ghost" onclick="openModal('match-modal')">+ Match manuel</button>
         <button class="btn btn-ghost" onclick="clearMatches()">🗑 Vider</button>
         <div style="margin-left:auto;display:flex;gap:6px">
-          <button class="btn btn-outline btn-sm" onclick="openArbitre()">⚖️ Arbitre</button>
           <button class="btn btn-outline btn-sm" onclick="openScoreboard()">📺 Tableau</button>
         </div>
       </div>
@@ -544,7 +542,8 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:14px 0}
       <div><h1 class="section-title">Classement</h1><p class="section-sub">Résultats en temps réel</p></div>
       <div class="flex gap-8">
         <button class="btn btn-ghost btn-sm" onclick="openScoreboard()">📺 Grand écran</button>
-        <button class="btn btn-ghost btn-sm" onclick="downloadRankingPDF()">📄 PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="downloadRankingPDF()">📄 Classement PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="downloadScoresPDF()">📄 Scores PDF</button>
       </div>
     </div>
     <div id="ranking-content"><div class="empty-state"><div class="es-icon">🏆</div><p>Saisissez des scores dans le Programme.</p></div></div>
@@ -709,23 +708,22 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <div class="toast" id="toast"></div>
 <script>
-
 'use strict';
 
 // ═══════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════
-let teams    = [];
-let matches  = [];
-let terrains = ['Terrain 1', 'Terrain 2'];
-let bonusCats = [
+let teams            = [];
+let matches          = [];   // unified model: always has teams[], scores{}, format
+let terrains         = ['Terrain 1', 'Terrain 2'];
+let bonusCats        = [
   { id:'fairplay',   name:'Fair-play',             color:'#4CAF50' },
   { id:'creativite', name:'Créativité',             color:'#9C27B0' },
   { id:'progres',    name:'Équipe la + progressée', color:'#FF9800' },
 ];
-let bonusPoints      = {};
-let tournamentFormat = 'robin';   // 'robin' | 'manual' | 'championship'
-let scoreFilter     = 'all';       // 'all' | 'pending' | 'ongoing' | 'done'
+let bonusPoints      = {};   // { teamId: { catId: number } }
+let tournamentFormat = 'robin';
+let scoreFilter      = 'all';
 let formPlayers      = [];
 let editTeamId       = null;
 let currentRulesEvent = null;
@@ -734,13 +732,14 @@ let currentRulesEvent = null;
 let arbTimer = { interval:null, remaining:900, running:false, duration:900 };
 let arbCurrentMatch = null;
 
-// Sync / Firebase
-let sessionCode      = null;
-let deviceId         = 'dev_' + Math.random().toString(36).substr(2,6);
-let syncDevices      = [];
-let _fbUnsub         = null;   // Firestore listener unsubscribe
-let _fbReady         = false;
-let _lastRemoteTs    = 0;      // avoid echo writes
+// Firebase sync
+let sessionCode   = null;
+let deviceId      = 'dev_' + Math.random().toString(36).substr(2,6);
+let syncDevices   = [];
+let _fbUnsub      = null;
+let _fbReady      = false;
+let _lastRemoteTs = 0;
+let _syncLastTs   = 0;
 
 // ═══════════════════════════════════════════════════════
 //  CONSTANTS
@@ -751,10 +750,10 @@ const ENV_LABELS = { ext:'Extérieur', int:'Intérieur', both:'Ext./Int.' };
 const ENV_BADGE  = { ext:'badge-ext', int:'badge-int', both:'badge-both' };
 const MEDAL      = ['🥇','🥈','🥉'];
 const MEDAL_COLS = ['#FFD700','#C0C0C0','#CD7F32'];
-const LS_KEY     = 'olympiades_v3';
+const LS_KEY     = 'olympiades_v4';
 
 // ═══════════════════════════════════════════════════════
-//  EVENTS LIBRARY (injected)
+//  EVENTS — injected
 // ═══════════════════════════════════════════════════════
 let EVENTS = [
   {
@@ -1082,11 +1081,90 @@ let EVENTS = [
 
 
 // ═══════════════════════════════════════════════════════
+//  MATCH MODEL HELPERS
+//  Every match always uses: teams[], scores{}, format, status
+//  Legacy fields teamA/teamB/scoreA/scoreB kept for compat
+// ═══════════════════════════════════════════════════════
+function makeMatch(teamIds, eventId, terrain, format) {
+  const scores = {};
+  teamIds.forEach(tid => { scores[tid] = null; });
+  return {
+    id: uid(),
+    teams: teamIds,
+    scores,
+    eventId: eventId || null,
+    terrain: terrain || '',
+    slot: null,
+    format: format || (teamIds.length === 2 ? 'duel' : 'multi'),
+    status: 'pending',
+    champGroup: null,
+    // legacy
+    teamA: teamIds[0], teamB: teamIds[1] || null,
+    get scoreA() { return this.scores[this.teamA]; },
+    set scoreA(v){ this.scores[this.teamA] = v; },
+    get scoreB() { return this.scores[this.teamB]; },
+    set scoreB(v){ if(this.teamB) this.scores[this.teamB] = v; },
+  };
+}
+
+// Normalise matches loaded from storage (may lack teams[] / scores{})
+function normaliseMatch(m) {
+  if (!m.teams) {
+    m.teams = m.teamB ? [m.teamA, m.teamB] : [m.teamA];
+  }
+  if (!m.scores) {
+    m.scores = {};
+    m.teams.forEach(tid => { m.scores[tid] = null; });
+    if (m.teamA && m.scoreA !== undefined) m.scores[m.teamA] = m.scoreA;
+    if (m.teamB && m.scoreB !== undefined) m.scores[m.teamB] = m.scoreB;
+  }
+  if (!m.format) m.format = m.teams.length === 2 ? 'duel' : 'multi';
+  if (!m.status) m.status = 'pending';
+  return m;
+}
+
+function getScore(m, teamId) {
+  if (m.scores && teamId in m.scores) return m.scores[teamId];
+  if (teamId === m.teamA) return m.scoreA ?? null;
+  if (teamId === m.teamB) return m.scoreB ?? null;
+  return null;
+}
+
+function setScore(matchId, teamId, val) {
+  const m = matches.find(m => m.id === matchId);
+  if (!m) return;
+  const v = val === '' ? null : parseFloat(val);
+  if (!m.scores) m.scores = {};
+  m.scores[teamId] = isNaN(v) ? null : v;
+  // sync legacy
+  if (teamId === m.teamA) m.scoreA = m.scores[teamId];
+  if (teamId === m.teamB) m.scoreB = m.scores[teamId];
+  // auto-set ongoing
+  const anyScore = Object.values(m.scores).some(s => s !== null);
+  if (anyScore && (!m.status || m.status === 'pending')) m.status = 'ongoing';
+  persistState(); broadcastState();
+  if (document.getElementById('tab-program')?.classList.contains('active')) renderMatches();
+}
+
+function isMatchDone(m) {
+  return m.status === 'done' ||
+    (m.teams && m.teams.length > 0 && m.teams.every(tid => m.scores && m.scores[tid] !== null));
+}
+
+function matchWinners(m) {
+  if (!m.teams || !m.scores) return [];
+  const scored = m.teams.filter(tid => m.scores[tid] !== null);
+  if (scored.length !== m.teams.length) return [];
+  const max = Math.max(...m.teams.map(tid => Number(m.scores[tid])));
+  return m.teams.filter(tid => Number(m.scores[tid]) === max);
+}
+
+// ═══════════════════════════════════════════════════════
 //  UTILS
 // ═══════════════════════════════════════════════════════
 function esc(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function uid()   { return '_' + Math.random().toString(36).substr(2,9); }
-function getTeam(id)  { return teams.find(t => t.id === id) || { name:'?', color:'#ccc', players:[] }; }
+function getTeam(id)  { return teams.find(t => t.id === id) || { id, name:'?', color:'#ccc', players:[] }; }
 function getEvent(id) { return EVENTS.find(e => e.id === id) || null; }
 function fmtTime(sec) {
   const m = Math.floor(sec/60), s = sec%60;
@@ -1098,7 +1176,6 @@ function showToast(msg, type='') {
   t.textContent = msg; t.className = 'toast ' + type; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2800);
 }
-
 function openModal(id) {
   if (id === 'team-modal')      prepTeamModal();
   if (id === 'match-modal')     prepMatchModal();
@@ -1121,7 +1198,7 @@ function showTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   const map = { teams:0, program:1, scores:2, ranking:3, bonus:4, data:5, multiscreen:6 };
-  document.querySelectorAll('.tab-btn')[map[name]].classList.add('active');
+  document.querySelectorAll('.tab-btn')[map[name]]?.classList.add('active');
   if (name === 'ranking')     renderRanking();
   if (name === 'program')     { updateEventsNeededInfo(); updateFormatInfo(); renderPlanningGrid(); }
   if (name === 'scores')      renderScoresTab();
@@ -1155,8 +1232,7 @@ function randomColor() {
 function addPlayerToForm() {
   const v = document.getElementById('player-input').value.trim();
   if (!v) return;
-  formPlayers.push(v);
-  document.getElementById('player-input').value = '';
+  formPlayers.push(v); document.getElementById('player-input').value = '';
   renderFormPlayers();
 }
 function renderFormPlayers() {
@@ -1170,7 +1246,7 @@ function removeFormPlayer(idx) { formPlayers.splice(idx,1); renderFormPlayers();
 
 function saveTeam() {
   const name = document.getElementById('team-name-input').value.trim();
-  if (!name) { showToast("Donnez un nom à l'équipe", 'error'); return; }
+  if (!name) { showToast("Donnez un nom à l'équipe",'error'); return; }
   const color = document.getElementById('team-color-input').value;
   if (editTeamId) {
     const t = teams.find(t => t.id === editTeamId);
@@ -1186,7 +1262,8 @@ function saveTeam() {
 function deleteTeam(id) {
   if (!confirm('Supprimer cette équipe et ses matchs ?')) return;
   teams   = teams.filter(t => t.id !== id);
-  matches = matches.filter(m => m.teamA !== id && m.teamB !== id);
+  matches = matches.filter(m => !m.teams.includes(id));
+  // Clean bonus points for deleted team
   delete bonusPoints[id];
   renderTeams(); renderReco(); renderMatches(); renderEventsLibrary();
   persistState(); broadcastState();
@@ -1202,11 +1279,8 @@ function renderTeams() {
     return;
   }
   el.innerHTML = teams.map(t => {
-    const mCnt = matches.filter(m => m.teamA===t.id||m.teamB===t.id).length;
-    const wins = matches.filter(m => {
-      if (m.scoreA===null) return false;
-      return (m.teamA===t.id && m.scoreA>m.scoreB) || (m.teamB===t.id && m.scoreB>m.scoreA);
-    }).length;
+    const mCnt = matches.filter(m => m.teams.includes(t.id)).length;
+    const wins  = matches.filter(m => isMatchDone(m) && matchWinners(m).length === 1 && matchWinners(m)[0] === t.id).length;
     return `
     <div class="card" style="padding:0;overflow:hidden">
       <div style="background:${t.color};padding:13px 15px;border-radius:var(--r-lg) var(--r-lg) 0 0;display:flex;align-items:center;justify-content:space-between">
@@ -1243,15 +1317,15 @@ function renderReco() {
   const slotPause = parseInt(document.getElementById('slot-pause')?.value||5);
   const mpd = Math.floor(480/(slotMin+slotPause));
   const days = Math.max(1, Math.ceil(robinCount/mpd));
-  const advice = !totalP ? 'Ajoutez des joueurs à vos équipes.'
-    : n<idealMin ? `⚠️ ${idealMin}–${idealMax} équipes idéales pour ${totalP} joueurs.`
-    : idealMax>0&&n>idealMax ? '⚠️ Équipes petites. Envisagez de fusionner.'
-    : `✅ Idéal ! Moyenne ${Math.round(totalP/n)} joueurs/équipe.`;
+  const advice = !totalP ? 'Ajoutez des joueurs.'
+    : n<idealMin ? `⚠️ ${idealMin}–${idealMax} équipes idéales.`
+    : idealMax>0&&n>idealMax ? '⚠️ Équipes petites, envisagez de fusionner.'
+    : `✅ Idéal — ${Math.round(totalP/n)} joueurs/équipe.`;
   document.getElementById('reco-grid').innerHTML = `
     <div class="reco-item"><div class="rl">Joueurs</div><div class="rv">${totalP}</div><div class="rh">${n} équipes</div></div>
     <div class="reco-item"><div class="rl">Idéal</div><div class="rv">${idealMin}–${idealMax}</div><div class="rh">équipes</div></div>
-    <div class="reco-item"><div class="rl">Robin</div><div class="rv">${robinCount}</div><div class="rh">matchs</div></div>
-    <div class="reco-item"><div class="rl">Durée</div><div class="rv">${days}j</div><div class="rh">~${mpd}/jour</div></div>
+    <div class="reco-item"><div class="rl">Round-robin</div><div class="rv">${robinCount}</div><div class="rh">matchs</div></div>
+    <div class="reco-item"><div class="rl">Durée est.</div><div class="rv">${days}j</div><div class="rh">~${mpd}/jour</div></div>
     <div class="reco-item" style="grid-column:1/-1"><div class="rh" style="font-size:12px">${advice}</div></div>`;
 }
 
@@ -1260,10 +1334,10 @@ function renderReco() {
 // ═══════════════════════════════════════════════════════
 function addTerrain() {
   const name = prompt('Nom du terrain ?', `Terrain ${terrains.length+1}`);
-  if (name&&name.trim()) { terrains.push(name.trim()); renderTerrains(); persistState(); }
+  if (name && name.trim()) { terrains.push(name.trim()); renderTerrains(); persistState(); }
 }
 function removeTerrain(idx) {
-  if (terrains.length<=1) { showToast('Au moins 1 terrain requis','error'); return; }
+  if (terrains.length <= 1) { showToast('Au moins 1 terrain requis','error'); return; }
   terrains.splice(idx,1); renderTerrains(); persistState();
 }
 function renderTerrains() {
@@ -1276,13 +1350,13 @@ function renderTerrains() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  FORMAT & MATCH GENERATION
+//  FORMAT & GENERATION
 // ═══════════════════════════════════════════════════════
 function selectFormat(fmt) {
   tournamentFormat = fmt;
-  ['robin','manual','championship'].forEach(f => {
-    document.getElementById('fmt-'+f)?.classList.toggle('selected', f===fmt);
-  });
+  ['robin','manual','championship'].forEach(f =>
+    document.getElementById('fmt-'+f)?.classList.toggle('selected', f===fmt)
+  );
   updateFormatInfo();
 }
 
@@ -1290,22 +1364,19 @@ function updateFormatInfo() {
   const el = document.getElementById('robin-info');
   if (!el) return;
   const n = teams.length;
-  if (tournamentFormat === 'robin') {
-    if (!n) { el.style.display='none'; return; }
+  if (tournamentFormat === 'robin' && n) {
     const cnt = n*(n-1)/2;
-    el.style.display = 'block';
-    el.innerHTML = `Avec <strong>${n} équipes</strong>, le round-robin génère <strong>${cnt} match${cnt>1?'s':''}</strong> (toutes contre toutes, 1 fois).`;
+    el.style.display = 'block'; el.className = 'info-box';
+    el.innerHTML = `Avec <strong>${n} équipes</strong>, le round-robin génère <strong>${cnt} match${cnt>1?'s':''}</strong>.`;
   } else if (tournamentFormat === 'championship') {
-    const selected = getSelectedEventIds();
-    if (!n || !selected.length) { el.style.display='none'; return; }
+    const sel = getSelectedEventIds();
+    if (!n || !sel.length) { el.style.display='none'; return; }
     const pairs = n*(n-1)/2;
-    // count duel events and multi-team events separately
-    const duelEvts  = selected.filter(id => { const ev=getEvent(id); return ev && !ev.multiTeamOk; }).length;
-    const multiEvts = selected.filter(id => { const ev=getEvent(id); return ev && ev.multiTeamOk; }).length;
-    const total = duelEvts * pairs + multiEvts * 1;
-    el.style.display = 'block';
-    el.className = 'info-box';
-    el.innerHTML = `🏆 <strong>Championnat</strong> : ${duelEvts} épreuve${duelEvts>1?'s':''} en duels (${duelEvts*pairs} matchs) + ${multiEvts} épreuve${multiEvts>1?'s':''} multi-équipes (${multiEvts} manche${multiEvts>1?'s':''}) = <strong>${total} matchs/manches au total</strong>.`;
+    const duelEvts  = sel.filter(id => { const ev=getEvent(id); return ev && !ev.multiTeamOk; }).length;
+    const multiEvts = sel.filter(id => { const ev=getEvent(id); return ev && ev.multiTeamOk; }).length;
+    const total = duelEvts * pairs + multiEvts;
+    el.style.display = 'block'; el.className = 'info-box';
+    el.innerHTML = `🏆 <strong>Championnat</strong> : ${duelEvts} épreuve${duelEvts>1?'s':''} duels (${duelEvts*pairs} matchs) + ${multiEvts} multi-équipes = <strong>${total} matchs/manches</strong>.`;
   } else {
     el.style.display = 'none';
   }
@@ -1314,91 +1385,50 @@ function updateFormatInfo() {
 function getSelectedEventIds() {
   return [...document.querySelectorAll('.event-card.selected')]
     .map(el => el.id.replace('evcard-',''))
-    .filter(id => EVENTS.find(e=>e.id===id));
+    .filter(id => EVENTS.find(e => e.id === id));
 }
 
-// Round-Robin : toutes équipes vs toutes (duels)
 function generateMatches() {
   if (teams.length < 2) { showToast('Il faut au moins 2 équipes','error'); return; }
   matches = [];
   let idx = 0;
   for (let i=0; i<teams.length; i++) {
     for (let j=i+1; j<teams.length; j++) {
-      matches.push({
-        id:uid(), teamA:teams[i].id, teamB:teams[j].id,
-        eventId:null, scoreA:null, scoreB:null,
-        terrain:terrains[idx%terrains.length]||'', slot:null,
-        format:'duel', status:'pending'
-      });
-      idx++;
+      const m = makeMatch([teams[i].id, teams[j].id], null, terrains[idx%terrains.length], 'duel');
+      matches.push(m); idx++;
     }
   }
   renderMatches(); updateEventsNeededInfo(); renderPlanningGrid(); renderReco();
   persistState(); broadcastState();
-  showToast(`${matches.length} match${matches.length>1?'s':''} générés ✓`, 'success');
+  showToast(`${matches.length} matchs générés ✓`, 'success');
 }
 
-// Championship : toutes équipes vs toutes pour chaque jeu sélectionné
 function generateChampionship() {
   if (teams.length < 2) { showToast('Il faut au moins 2 équipes','error'); return; }
   const selectedIds = getSelectedEventIds();
-  if (!selectedIds.length) { showToast('Sélectionnez au moins une épreuve dans la bibliothèque','error'); return; }
-
+  if (!selectedIds.length) { showToast('Sélectionnez au moins une épreuve','error'); return; }
   matches = [];
   let slotIdx = 0;
-  const startStr = document.getElementById('start-time').value||'09:00';
-  const slotMin  = parseInt(document.getElementById('slot-duration').value||20);
-  const pauseMin = parseInt(document.getElementById('slot-pause').value||5);
-  const [sh,sm]  = startStr.split(':').map(Number);
-  let startTotal = sh*60+sm;
-
   selectedIds.forEach(evId => {
     const ev = getEvent(evId);
     if (!ev) return;
-
     if (ev.multiTeamOk && teams.length >= (ev.minTeams||2) && teams.length <= (ev.maxTeams||99)) {
-      // Multi-team match: one match, all teams play together
-      const scoreMap = {};
-      teams.forEach(t => { scoreMap[t.id] = null; });
-      matches.push({
-        id:uid(), format:'multi',
-        teams:teams.map(t=>t.id),
-        scores:scoreMap,
-        eventId:evId,
-        terrain:terrains[slotIdx%terrains.length]||'',
-        slot:null,
-        // legacy compat
-        teamA:teams[0].id, teamB:teams[1].id, scoreA:null, scoreB:null,
-        status:'pending'
-      });
-      slotIdx++;
+      const m = makeMatch(teams.map(t=>t.id), evId, terrains[slotIdx%terrains.length], 'multi');
+      m.champGroup = evId;
+      matches.push(m); slotIdx++;
     } else {
-      // Duel format: all pairs for this event
-      const pairs = [];
       for (let i=0; i<teams.length; i++) {
         for (let j=i+1; j<teams.length; j++) {
-          pairs.push({ i, j });
+          const m = makeMatch([teams[i].id, teams[j].id], evId, terrains[slotIdx%terrains.length], 'duel');
+          m.champGroup = evId;
+          matches.push(m); slotIdx++;
         }
       }
-      pairs.forEach(({i,j}, pi) => {
-        matches.push({
-          id:uid(), format:'duel',
-          teamA:teams[i].id, teamB:teams[j].id,
-          eventId:evId,
-          scoreA:null, scoreB:null,
-          terrain:terrains[(slotIdx+pi)%terrains.length]||'',
-          slot:null,
-          champGroup:evId, status:'pending'
-        });
-      });
-      slotIdx += pairs.length;
     }
   });
-
   renderMatches(); updateEventsNeededInfo(); renderPlanningGrid(); renderReco();
   persistState(); broadcastState();
-  const total = matches.length;
-  showToast(`Championnat : ${total} match${total>1?'s':''} générés ✓`, 'success');
+  showToast(`Championnat : ${matches.length} matchs générés ✓`, 'success');
   updateFormatInfo();
 }
 
@@ -1410,39 +1440,32 @@ function autoSchedule() {
   const [sh,sm]  = startStr.split(':').map(Number);
   let startTotal = sh*60+sm;
   const step = slotMin+pauseMin;
-
-  // Group duel matches into rounds (no team plays twice per round)
-  const duelMatches  = matches.filter(m => m.format!=='multi');
-  const multiMatches = matches.filter(m => m.format==='multi');
-
-  const rounds=[], remaining=[...duelMatches];
+  const duelMs  = matches.filter(m => m.format!=='multi');
+  const multiMs = matches.filter(m => m.format==='multi');
+  const rounds=[], remaining=[...duelMs];
   while(remaining.length){
     const round=[], used=new Set(), toRm=[];
     for(let i=0;i<remaining.length;i++){
       const m=remaining[i];
-      if(!used.has(m.teamA)&&!used.has(m.teamB)){
-        round.push(m); used.add(m.teamA); used.add(m.teamB); toRm.push(i);
+      const teamIds = m.teams||[];
+      if(teamIds.every(tid=>!used.has(tid))){
+        round.push(m); teamIds.forEach(tid=>used.add(tid)); toRm.push(i);
       }
     }
     toRm.reverse().forEach(i=>remaining.splice(i,1));
     rounds.push(round);
   }
   rounds.forEach((round,ri)=>{
-    const t2 = startTotal+ri*step;
-    const h=Math.floor(t2/60)%24, m2=t2%60;
+    const t2=startTotal+ri*step, h=Math.floor(t2/60)%24, m2=t2%60;
     const slot=`${String(h).padStart(2,'0')}:${String(m2).padStart(2,'0')}`;
     round.forEach((m,ti)=>{ m.slot=slot; m.terrain=terrains[ti%terrains.length]; });
   });
-
-  // Schedule multi-team matches after duel rounds
-  const afterRounds = startTotal + rounds.length*step;
-  multiMatches.forEach((m,i)=>{
-    const t2 = afterRounds+i*step;
-    const h=Math.floor(t2/60)%24, m2=t2%60;
+  const afterRounds=startTotal+rounds.length*step;
+  multiMs.forEach((m,i)=>{
+    const t2=afterRounds+i*step, h=Math.floor(t2/60)%24, m2=t2%60;
     m.slot=`${String(h).padStart(2,'0')}:${String(m2).padStart(2,'0')}`;
     m.terrain=terrains[i%terrains.length];
   });
-
   renderMatches(); renderPlanningGrid();
   persistState(); broadcastState();
   showToast('Planning auto-généré ✓','success');
@@ -1461,7 +1484,7 @@ function updateEventsNeededInfo() {
   if(!matches.length){ el.style.display='none'; return; }
   const needed=matches.length, assigned=matches.filter(m=>m.eventId).length;
   el.style.display='block';
-  el.innerHTML=`📌 <strong>${needed}</strong> match${needed>1?'s':''} · <strong>${assigned}</strong> épreuve${assigned>1?'s':''} assignée${assigned>1?'s':''}. Sélectionnez dans la bibliothèque ou utilisez l'assignation aléatoire.`;
+  el.innerHTML=`📌 <strong>${needed}</strong> match${needed>1?'s':''} · <strong>${assigned}</strong> épreuve${assigned>1?'s':''} assignée${assigned>1?'s':''}.`;
 }
 
 function prepMatchModal() {
@@ -1469,10 +1492,8 @@ function prepMatchModal() {
   document.getElementById('match-team-a').innerHTML = opts;
   document.getElementById('match-team-b').innerHTML = opts;
   document.getElementById('match-event').innerHTML =
-    `<option value="">— Épreuve —</option>`+
-    EVENTS.map(e=>`<option value="${e.id}">${e.icon} ${esc(e.name)}</option>`).join('');
-  document.getElementById('match-terrain').innerHTML =
-    terrains.map(t=>`<option value="${t}">${esc(t)}</option>`).join('');
+    `<option value="">— Épreuve —</option>`+EVENTS.map(e=>`<option value="${e.id}">${e.icon} ${esc(e.name)}</option>`).join('');
+  document.getElementById('match-terrain').innerHTML = terrains.map(t=>`<option value="${t}">${esc(t)}</option>`).join('');
   document.getElementById('match-slot').value='';
 }
 function saveManualMatch() {
@@ -1483,10 +1504,12 @@ function saveManualMatch() {
   const ter=document.getElementById('match-terrain').value;
   const slot=document.getElementById('match-slot').value;
   if(slot){
-    const conflict=matches.find(m=>m.slot===slot&&(m.teamA===a||m.teamA===b||m.teamB===a||m.teamB===b));
-    if(conflict){ showToast('⚠️ Conflit de créneau pour une de ces équipes','error'); return; }
+    const conflict=matches.find(m=>m.slot===slot&&m.teams.some(tid=>tid===a||tid===b));
+    if(conflict){ showToast('⚠️ Conflit de créneau','error'); return; }
   }
-  matches.push({id:uid(),format:'duel',teamA:a,teamB:b,eventId:ev||null,scoreA:null,scoreB:null,terrain:ter,slot:slot||null,status:'pending'});
+  const m = makeMatch([a,b], ev||null, ter, 'duel');
+  m.slot = slot||null;
+  matches.push(m);
   closeModal('match-modal');
   renderMatches(); updateEventsNeededInfo(); renderPlanningGrid();
   persistState(); broadcastState();
@@ -1504,47 +1527,7 @@ function setMatchEvent(matchId, eventId) {
   updateEventsNeededInfo();
 }
 
-// Score for duel match
-function setScore(matchId, side, val) {
-  const m=matches.find(m=>m.id===matchId);
-  if(!m) return;
-  const v=val===''?null:parseFloat(val);
-  m['score'+side]=isNaN(v)?null:v;
-  updateMatchWinnerBadge(matchId);
-  persistState(); broadcastState();
-}
-// Score for multi-team match
-function setMultiScore(matchId, teamId, val) {
-  const m=matches.find(m=>m.id===matchId);
-  if(!m||!m.scores) return;
-  const v=val===''?null:parseFloat(val);
-  m.scores[teamId]=isNaN(v)?null:v;
-  // sync legacy fields for compatibility
-  if(m.teamA===teamId) m.scoreA=m.scores[teamId];
-  if(m.teamB===teamId) m.scoreB=m.scores[teamId];
-  persistState(); broadcastState();
-}
-
-function updateMatchWinnerBadge(matchId) {
-  const m=matches.find(m=>m.id===matchId);
-  if(!m) return;
-  const card=document.querySelector(`[data-match="${matchId}"]`);
-  if(!card) return;
-  const wb=card.querySelector('.match-winner');
-  const numEl=card.querySelector('.match-num');
-  if(m.scoreA!==null&&m.scoreB!==null&&wb){
-    const tA=getTeam(m.teamA),tB=getTeam(m.teamB);
-    if(m.scoreA>m.scoreB) wb.textContent='🏆 '+tA.name;
-    else if(m.scoreB>m.scoreA) wb.textContent='🏆 '+tB.name;
-    else wb.textContent='🤝 Égalité';
-    wb.style.display='flex';
-    if(numEl){ numEl.classList.add('done'); numEl.textContent='✓'; }
-  } else if(wb) {
-    wb.style.display='none';
-    if(numEl) numEl.classList.remove('done');
-  }
-}
-
+// ── Programme tab match list (no score inputs) ──
 function renderMatches() {
   const el = document.getElementById('matches-list');
   document.getElementById('matches-count').textContent = matches.length?`(${matches.length})`:'';
@@ -1552,113 +1535,61 @@ function renderMatches() {
     el.innerHTML=`<div class="empty-state"><div class="es-icon">📋</div><p>Aucun match planifié.</p></div>`;
     return;
   }
-
-  // Group by champGroup if championship format
-  const grouped = {};
-  matches.forEach((m,i) => {
-    const key = m.champGroup || m.eventId || '__ungrouped__';
+  const grouped={};
+  matches.forEach((m,i)=>{
+    const key=m.champGroup||m.eventId||'__free__';
     if(!grouped[key]) grouped[key]=[];
     grouped[key].push({m,i});
   });
-
+  const isChamp=tournamentFormat==='championship'&&matches.some(m=>m.champGroup);
   let html='';
-  const isChamp = tournamentFormat==='championship' && matches.some(m=>m.champGroup||m.format==='multi');
-
-  Object.entries(grouped).forEach(([key, items]) => {
-    if(isChamp && key!=='__ungrouped__') {
+  Object.entries(grouped).forEach(([key,items])=>{
+    if(isChamp&&key!=='__free__'){
       const ev=getEvent(key);
       if(ev) html+=`<div class="champ-group-header">${ev.icon} ${esc(ev.name)} <span style="font-size:11px;opacity:.7;font-family:Inter;font-weight:400;margin-left:8px">${items.length} match${items.length>1?'s':''}</span></div>`;
     }
-    items.forEach(({m,i}) => {
-      html += m.format==='multi' ? renderMultiMatch(m,i) : renderDuelMatch(m,i);
-    });
+    items.forEach(({m,i})=>{ html+=renderMatchRow(m,i); });
   });
   el.innerHTML=html;
 }
 
-function renderDuelMatch(m,i) {
-  const tA=getTeam(m.teamA),tB=getTeam(m.teamB);
+function renderMatchRow(m, i) {
   const ev=m.eventId?getEvent(m.eventId):null;
-  const done=m.scoreA!==null&&m.scoreB!==null;
-  const wA=done&&m.scoreA>m.scoreB,wB=done&&m.scoreB>m.scoreA;
-  const winnerTxt=done?(wA?'🏆 '+tA.name:wB?'🏆 '+tB.name:'🤝 Égalité'):'';
-  const evOpts=`<option value="">— Épreuve —</option>`+
-    EVENTS.map(e=>`<option value="${e.id}"${m.eventId===e.id?' selected':''}>${e.icon} ${esc(e.name)}</option>`).join('');
+  const done=isMatchDone(m);
+  const winners=matchWinners(m);
+  const statusColor={pending:'var(--border)',ongoing:'var(--orange)',done:'var(--green)'}[m.status||'pending'];
+  const statusLabel={pending:'⏳',ongoing:'▶️',done:'✅'}[m.status||'pending'];
+  const scoreStr=m.teams.map(tid=>{const sc=m.scores?m.scores[tid]:null;return sc!==null?sc:'—';}).join(' : ');
+
   return `
-  <div class="match-card" data-match="${m.id}">
+  <div class="match-card" data-match="${m.id}" style="border-left:3px solid ${statusColor}">
     <div class="match-num ${done?'done':''}">${done?'✓':i+1}</div>
     <div style="min-width:155px;flex:0 0 155px">
-      <select class="select" style="font-size:11px;padding:4px 6px;margin-bottom:4px" onchange="setMatchEvent('${m.id}',this.value)">${evOpts}</select>
+      <select class="select" style="font-size:11px;padding:4px 6px;margin-bottom:4px" onchange="setMatchEvent('${m.id}',this.value)">
+        <option value="">— Épreuve —</option>
+        ${EVENTS.map(e=>`<option value="${e.id}"${m.eventId===e.id?' selected':''}>${e.icon} ${esc(e.name)}</option>`).join('')}
+      </select>
       <div style="display:flex;gap:4px;flex-wrap:wrap">
         ${ev?`<span class="badge ${CAT_BADGE[ev.cat]||'badge-prec'}" style="font-size:9px">${CAT_LABELS[ev.cat]}</span>`:''}
-        ${m.terrain?`<span class="badge" style="background:var(--blue-light);color:var(--blue);font-size:9px">📍 ${esc(m.terrain)}</span>`:''}
-        ${m.slot?`<span class="badge" style="background:#F3E5F5;color:#6A1B9A;font-size:9px">⏰ ${m.slot}</span>`:''}
+        ${m.terrain?`<span class="badge" style="background:var(--blue-light);color:var(--blue);font-size:9px">📍${esc(m.terrain)}</span>`:''}
+        ${m.slot?`<span class="badge" style="background:#F3E5F5;color:#6A1B9A;font-size:9px">⏰${m.slot}</span>`:''}
       </div>
     </div>
-    <div style="flex:1;display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap;min-width:200px">
-      <div style="flex:1;text-align:right;font-size:12px;font-weight:${wA?700:500};color:${wA?tA.color:'var(--text)'}">
-        <span class="dot" style="background:${tA.color}"></span> ${esc(tA.name)}
-      </div>
-      <div class="score-wrap">
-        <input class="score-input" type="number" min="0" value="${m.scoreA??''}" placeholder="—"
-          oninput="setScore('${m.id}','A',this.value)" style="color:${wA?'var(--orange)':'var(--text)'}">
-        <span class="score-sep">:</span>
-        <input class="score-input" type="number" min="0" value="${m.scoreB??''}" placeholder="—"
-          oninput="setScore('${m.id}','B',this.value)" style="color:${wB?'var(--orange)':'var(--text)'}">
-      </div>
-      <div style="flex:1;text-align:left;font-size:12px;font-weight:${wB?700:500};color:${wB?tB.color:'var(--text)'}">
-        ${esc(tB.name)} <span class="dot" style="background:${tB.color};margin-left:4px;margin-right:0"></span>
-      </div>
+    <div style="flex:1;display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap">
+      ${m.teams.map(tid=>{
+        const t=getTeam(tid);
+        const isW=winners.includes(tid)&&winners.length===1;
+        return `<span style="font-size:12px;font-weight:${isW?700:500};color:${isW?t.color:'var(--text)'}"><span class="dot" style="background:${t.color}"></span> ${esc(t.name)}</span>`;
+      }).join('<span style="color:var(--muted);margin:0 4px">vs</span>')}
     </div>
-    <div class="match-winner" style="display:${done?'flex':'none'}">${winnerTxt}</div>
+    <div style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px;flex-shrink:0">${scoreStr}</div>
+    <span style="font-size:14px;flex-shrink:0" title="${{pending:'En attente',ongoing:'En cours',done:'Terminé'}[m.status||'pending']}">${statusLabel}</span>
     <div style="display:flex;gap:4px;flex-shrink:0">
-      <button class="btn btn-sm btn-ghost btn-icon" title="Vue arbitre" onclick="openArbitre('${m.id}')">⚖️</button>
       <button class="btn btn-sm btn-danger btn-icon" onclick="deleteMatch('${m.id}')">×</button>
     </div>
   </div>`;
 }
 
-function renderMultiMatch(m,i) {
-  const ev=m.eventId?getEvent(m.eventId):null;
-  const teamIds=m.teams||[m.teamA,m.teamB];
-  const scores=m.scores||{};
-  const allDone=teamIds.every(tid=>scores[tid]!==null&&scores[tid]!==undefined);
-  // Find winner(s)
-  let winnerIds=[];
-  if(allDone){
-    const maxScore=Math.max(...teamIds.map(tid=>Number(scores[tid])));
-    winnerIds=teamIds.filter(tid=>Number(scores[tid])===maxScore);
-  }
-  return `
-  <div class="match-card" data-match="${m.id}" style="flex-direction:column;align-items:stretch">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <div class="match-num ${allDone?'done':''}">${allDone?'✓':i+1}</div>
-      <div style="flex:1">
-        <div style="font-size:12px;font-weight:700;color:var(--blue)">${ev?ev.icon+' '+esc(ev.name):'Match multi-équipes'}</div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">
-          ${m.terrain?`<span class="badge" style="background:var(--blue-light);color:var(--blue);font-size:9px">📍 ${esc(m.terrain)}</span>`:''}
-          ${m.slot?`<span class="badge" style="background:#F3E5F5;color:#6A1B9A;font-size:9px">⏰ ${m.slot}</span>`:''}
-          <span class="badge" style="background:var(--green-light);color:var(--green);font-size:9px">👥 ${teamIds.length} équipes</span>
-        </div>
-      </div>
-      <button class="btn btn-sm btn-danger btn-icon" onclick="deleteMatch('${m.id}')">×</button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:7px">
-      ${teamIds.map(tid=>{
-        const t=getTeam(tid);
-        const sc=scores[tid]??'';
-        const isWinner=winnerIds.includes(tid);
-        return `<div style="background:${t.color}15;border:1.5px solid ${isWinner?t.color:t.color+'44'};border-radius:var(--r);padding:8px 10px;display:flex;align-items:center;gap:7px">
-          <span class="dot" style="background:${t.color}"></span>
-          <span style="font-size:12px;font-weight:600;flex:1;color:${isWinner?t.color:'var(--text)'}">${esc(t.name)}${isWinner?' 🏆':''}</span>
-          <input type="number" min="0" value="${sc}" placeholder="—"
-            style="width:48px;text-align:center;border:1.5px solid ${t.color}66;border-radius:7px;font-size:14px;font-weight:700;padding:3px;background:#fff;outline:none"
-            oninput="setMultiScore('${m.id}','${tid}',this.value)">
-        </div>`;
-      }).join('')}
-    </div>
-  </div>`;
-}
 
 // ═══════════════════════════════════════════════════════
 //  PLANNING GRID
@@ -1668,8 +1599,7 @@ function detectConflicts() {
   const bySlotTeam={};
   matches.forEach(m=>{
     if(!m.slot) return;
-    const teamIds=m.format==='multi'?(m.teams||[m.teamA,m.teamB]):[m.teamA,m.teamB];
-    teamIds.forEach(tid=>{
+    (m.teams||[]).forEach(tid=>{
       const key=m.slot+'__'+tid;
       if(!bySlotTeam[key]) bySlotTeam[key]=[];
       bySlotTeam[key].push(m.id);
@@ -1700,7 +1630,7 @@ function renderPlanningGrid() {
   if(conflictIds.size>0) confEl.innerHTML=`⚠️ <strong>${conflictIds.size} conflit${conflictIds.size>1?'s':''}</strong> détecté${conflictIds.size>1?'s':''}.`;
   const slots=[...new Set(withSlot.map(m=>m.slot))].sort();
   const ters=[...new Set(withSlot.map(m=>m.terrain||'—'))].sort();
-  let html=`<table class="planning-table"><thead><tr><th style="min-width:52px">Créneau</th>${ters.map(t=>`<th>📍 ${esc(t)}</th>`).join('')}</tr></thead><tbody>`;
+  let html=`<table class="planning-table"><thead><tr><th style="min-width:52px">Créneau</th>${ters.map(t=>`<th>📍${esc(t)}</th>`).join('')}</tr></thead><tbody>`;
   slots.forEach(slot=>{
     html+=`<tr><td class="time-cell">⏰<br>${slot}</td>`;
     ters.forEach(ter=>{
@@ -1710,11 +1640,9 @@ function renderPlanningGrid() {
       ms.forEach(m=>{
         const ev=m.eventId?getEvent(m.eventId):null;
         const isCflt=conflictIds.has(m.id);
-        const isMulti=m.format==='multi';
-        const teamIds=isMulti?(m.teams||[m.teamA,m.teamB]):[m.teamA,m.teamB];
-        const tA=getTeam(teamIds[0]);
-        const label=isMulti?`${teamIds.length} équipes`:`${getTeam(m.teamA).name} vs ${getTeam(m.teamB).name}`;
-        html+=`<div class="slot-match ${isCflt?'slot-conflict':''}" style="background:${tA.color}20;border-left:3px solid ${tA.color}">
+        const t0=getTeam(m.teams[0]);
+        const label=m.format==='multi'?`${m.teams.length} équipes`:m.teams.map(tid=>getTeam(tid).name).join(' vs ');
+        html+=`<div class="slot-match${isCflt?' slot-conflict':''}" style="background:${t0.color}20;border-left:3px solid ${t0.color}">
           <div style="font-weight:700;color:var(--blue);font-size:10px">${label}</div>
           ${ev?`<div style="color:var(--muted);font-size:9px">${ev.icon} ${esc(ev.name)}</div>`:''}
           ${isCflt?`<div style="color:var(--red);font-size:9px">⚠️ Conflit</div>`:''}
@@ -1729,30 +1657,20 @@ function renderPlanningGrid() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  EVENTS LIBRARY — with minTeams/maxTeams filtering
+//  EVENTS LIBRARY
 // ═══════════════════════════════════════════════════════
 function renderEventsLibrary() {
   const n = teams.length;
   document.getElementById('events-library').innerHTML = EVENTS.map(ev => {
-    const minT = ev.minTeams||2, maxT = ev.maxTeams||99;
-    const tooFew  = n>0 && n<minT;
-    const isIncompat = tooFew; // only block if too few (too many teams → uses duels)
-    const isMulti = ev.multiTeamOk && n>=minT && n<=maxT;
-
-    let teamsLabel='';
-    if(maxT>=99)       teamsLabel=`2+ équipes`;
-    else if(maxT===2)  teamsLabel=`2 équipes (duels)`;
-    else if(isMulti)   teamsLabel=`${minT}–${maxT} équipes ✓`;
-    else               teamsLabel=`${minT}–${maxT} équipes`;
-
-    const incompatMsg = tooFew
-      ? `<div style="background:var(--red-light);color:var(--red);font-size:10px;font-weight:600;padding:4px 10px 8px">⚠️ Nécessite au moins ${minT} équipes (vous en avez ${n})</div>`
-      : '';
-
+    const minT=ev.minTeams||2, maxT=ev.maxTeams||99;
+    const tooFew=n>0&&n<minT;
+    const isMulti=ev.multiTeamOk&&n>=minT&&n<=maxT;
+    let teamsLabel = maxT>=99?'2+ équipes':maxT===2?'2 équipes':isMulti?`${minT}–${maxT} ✓`:`${minT}–${maxT} équipes`;
+    const incompatMsg = tooFew ? `<div style="background:var(--red-light);color:var(--red);font-size:10px;font-weight:600;padding:4px 10px 8px">⚠️ Nécessite ${minT}+ équipes (vous en avez ${n})</div>` : '';
     return `
-    <div class="event-card${isIncompat?' incompatible':''}" id="evcard-${ev.id}"
-      onclick="${isIncompat?`showToast('Épreuve incompatible : il faut au moins ${minT} équipes','error')`:`toggleEventSelect('${ev.id}')`}">
-      <div class="event-teams-badge ${isMulti?'multi':''}">${isMulti?'👥 Multi':teamsLabel}</div>
+    <div class="event-card${tooFew?' incompatible':''}" id="evcard-${ev.id}"
+      onclick="${tooFew?`showToast('Il faut au moins ${minT} équipes','error')`:`toggleEventSelect('${ev.id}')`}">
+      <div class="event-teams-badge${isMulti?' multi':''}">${isMulti?'👥 Multi':teamsLabel}</div>
       <div class="event-header">
         <div class="event-icon">${ev.icon}</div>
         <div style="flex:1;padding-right:64px">
@@ -1780,7 +1698,6 @@ function toggleEventSelect(id) {
   card.classList.toggle('selected');
   updateFormatInfo();
 }
-
 function randomAssign() {
   if(!matches.length){ showToast("Générez d'abord les matchs",'error'); return; }
   const pool=[...EVENTS];
@@ -1789,12 +1706,9 @@ function randomAssign() {
   renderMatches(); persistState(); broadcastState();
   showToast('Épreuves assignées aléatoirement ✓','success');
 }
-
 function saveCustomEvent() {
   const name=document.getElementById('ce-name').value.trim();
   if(!name){ showToast('Donnez un nom','error'); return; }
-  const min=parseInt(document.getElementById('ce-min').value)||2;
-  const max=parseInt(document.getElementById('ce-max').value)||2;
   EVENTS.push({
     id:'custom_'+uid(), icon:'⭐', name,
     cat:document.getElementById('ce-cat').value,
@@ -1803,17 +1717,15 @@ function saveCustomEvent() {
     desc:document.getElementById('ce-desc').value,
     rules:document.getElementById('ce-rules').value.split('\n').filter(r=>r.trim()),
     scoring:document.getElementById('ce-scoring').value,
-    minTeams:min, maxTeams:max,
+    minTeams:parseInt(document.getElementById('ce-min').value)||2,
+    maxTeams:parseInt(document.getElementById('ce-max').value)||2,
     multiTeamOk:document.getElementById('ce-multi').checked
   });
-  closeModal('custom-event-modal');
-  renderEventsLibrary();
+  closeModal('custom-event-modal'); renderEventsLibrary();
   showToast('Épreuve ajoutée ✓','success');
 }
-
 function showRules(eventId) {
-  const ev=EVENTS.find(e=>e.id===eventId);
-  if(!ev) return;
+  const ev=EVENTS.find(e=>e.id===eventId); if(!ev) return;
   currentRulesEvent=ev;
   document.getElementById('rules-modal-title').textContent=ev.icon+' '+ev.name;
   document.getElementById('rules-modal-body').innerHTML=`
@@ -1821,8 +1733,8 @@ function showRules(eventId) {
       <span class="badge ${CAT_BADGE[ev.cat]||'badge-prec'}">${CAT_LABELS[ev.cat]}</span>
       <span class="badge ${ENV_BADGE[ev.env]||'badge-both'}">${ENV_LABELS[ev.env]}</span>
       <span class="badge" style="background:#F5F5F5;color:#555">⏱ ${ev.dur}</span>
-      <span class="badge" style="background:var(--blue-light);color:var(--blue)">${ev.minTeams||2}–${ev.maxTeams>=99?'∞':ev.maxTeams||2} équipes</span>
-      ${ev.multiTeamOk?`<span class="badge" style="background:var(--green-light);color:var(--green)">👥 Multi-équipes</span>`:''}
+      <span class="badge" style="background:var(--blue-light);color:var(--blue)">${ev.minTeams||2}–${(ev.maxTeams||2)>=99?'∞':ev.maxTeams||2} équipes</span>
+      ${ev.multiTeamOk?`<span class="badge" style="background:var(--green-light);color:var(--green)">👥 Multi</span>`:''}
     </div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:13px">${esc(ev.desc)}</p>
     <div style="font-family:'Bebas Neue';font-size:15px;color:var(--blue);letter-spacing:1px;margin-bottom:7px">RÈGLES</div>
@@ -1835,7 +1747,119 @@ function showRules(eventId) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  RANKING — handles both duel and multi-team matches
+//  SCORES TAB — saisie rapide avec statut
+// ═══════════════════════════════════════════════════════
+function setScoreFilter(f) {
+  scoreFilter = f;
+  ['all','pending','ongoing','done'].forEach(k => {
+    const b=document.getElementById('sf-'+k);
+    if(b) b.className='btn btn-sm '+(k===f?'btn-primary':'btn-ghost');
+  });
+  renderScoresTab();
+}
+
+function setMatchStatus(id, status) {
+  const m=matches.find(m=>m.id===id); if(!m) return;
+  m.status=status;
+  persistState(); broadcastState();
+  renderScoresTab();
+  if(document.getElementById('scoreboard-view').classList.contains('open')) updateScoreboard();
+}
+
+function renderScoresTab() {
+  const el=document.getElementById('scores-list'); if(!el) return;
+  const sub=document.getElementById('scores-sub');
+  const done=matches.filter(m=>m.status==='done').length;
+  const ongoing=matches.filter(m=>m.status==='ongoing').length;
+  const pending=matches.filter(m=>!m.status||m.status==='pending').length;
+  if(sub) sub.textContent=`${matches.length} matchs · ✅ ${done} terminés · ▶️ ${ongoing} en cours · ⏳ ${pending} en attente`;
+  let filtered=matches;
+  if(scoreFilter==='pending')  filtered=matches.filter(m=>!m.status||m.status==='pending');
+  if(scoreFilter==='ongoing')  filtered=matches.filter(m=>m.status==='ongoing');
+  if(scoreFilter==='done')     filtered=matches.filter(m=>m.status==='done');
+  const countEl=document.getElementById('scores-filter-count');
+  if(countEl) countEl.textContent=`${filtered.length} match${filtered.length!==1?'s':''}`;
+  if(!matches.length){
+    el.innerHTML=`<div class="empty-state"><div class="es-icon">🎯</div><p>Aucun match généré.<br>Allez dans l'onglet Programme.</p></div>`;
+    return;
+  }
+  if(!filtered.length){
+    el.innerHTML=`<div class="empty-state"><div class="es-icon">🔍</div><p>Aucun match dans cette catégorie.</p></div>`;
+    return;
+  }
+  const grouped={};
+  filtered.forEach(m=>{
+    const key=m.champGroup||m.eventId||'__free__';
+    if(!grouped[key]) grouped[key]=[];
+    grouped[key].push(m);
+  });
+  const isChamp=tournamentFormat==='championship'&&matches.some(m=>m.champGroup);
+  let html='';
+  Object.entries(grouped).forEach(([key,items])=>{
+    if(isChamp&&key!=='__free__'){
+      const ev=getEvent(key);
+      if(ev) html+=`<div class="champ-group-header">${ev.icon} ${esc(ev.name)} <span style="font-size:11px;opacity:.7;font-family:Inter;font-weight:400;margin-left:8px">${items.length} match${items.length>1?'s':''}</span></div>`;
+    }
+    items.forEach(m=>{ html+=renderScoreCard(m); });
+  });
+  el.innerHTML=html;
+}
+
+function renderScoreCard(m) {
+  const ev=m.eventId?getEvent(m.eventId):null;
+  const st=m.status||'pending';
+  const winners=isMatchDone(m)?matchWinners(m):[];
+  const statusBtns=`
+    <div style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="status-pill ${st==='pending'?'ongoing':'pending'}" onclick="setMatchStatus('${m.id}','${st==='pending'?'ongoing':'pending'}')">
+        ${st==='pending'?'▶️ Démarrer':'⏹ Annuler'}
+      </button>
+      ${st!=='pending'?`<button class="status-pill done" onclick="setMatchStatus('${m.id}','${st==='done'?'ongoing':'done'}')">
+        ${st==='done'?'↩ Rouvrir':'✅ Terminer'}</button>`:''}
+    </div>`;
+
+  // Build score inputs grid — works for 2 or N teams
+  const scoreGrid=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(${m.teams.length<=2?'160':'130'}px,1fr));gap:8px;margin-bottom:10px">
+      ${m.teams.map(tid=>{
+        const t=getTeam(tid);
+        const sc=m.scores?m.scores[tid]??'':'';
+        const isW=winners.includes(tid)&&winners.length===1;
+        return `<div style="background:${t.color}12;border:1.5px solid ${isW?t.color:t.color+'44'};border-radius:var(--r);padding:9px 11px">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px">
+            <span class="dot" style="background:${t.color}"></span>
+            <span style="font-size:12px;font-weight:600;color:${isW?t.color:'var(--text)'}">${esc(t.name)}${isW?' 🏆':''}</span>
+          </div>
+          ${t.players.length?`<div style="font-size:9px;color:var(--muted);margin-bottom:5px">${t.players.slice(0,3).map(p=>esc(p)).join(', ')}${t.players.length>3?'…':''}</div>`:''}
+          <input type="number" min="0" value="${sc}" placeholder="—"
+            style="width:100%;text-align:center;border:1.5px solid ${t.color}66;border-radius:8px;font-size:${m.teams.length<=2?'22':'18'}px;font-weight:700;padding:6px;background:#fff;outline:none"
+            ${st==='done'?'readonly ':''}
+            oninput="setScore('${m.id}','${tid}',this.value)">
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  return `
+  <div class="score-card status-${st}">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <div style="flex:1;display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+        ${ev?`<span style="font-size:14px">${ev.icon}</span><span style="font-size:12px;font-weight:600;color:var(--blue)">${esc(ev.name)}</span>`:'<span style="font-size:12px;color:var(--muted)">Épreuve non définie</span>'}
+        ${m.teams.length>2?`<span class="badge" style="background:var(--green-light);color:var(--green);font-size:9px">👥 ${m.teams.length} équipes</span>`:''}
+        ${m.terrain?`<span class="badge" style="background:var(--blue-light);color:var(--blue);font-size:9px">📍${esc(m.terrain)}</span>`:''}
+        ${m.slot?`<span class="badge" style="background:#F3E5F5;color:#6A1B9A;font-size:9px">⏰${m.slot}</span>`:''}
+      </div>
+      <span class="status-pill ${st}" style="cursor:default">${st==='pending'?'⏳ En attente':st==='ongoing'?'▶️ En cours':'✅ Terminé'}</span>
+    </div>
+    ${scoreGrid}
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+      ${statusBtns}
+      <button class="btn btn-ghost btn-sm" onclick="openArbitre('${m.id}')">⚖️ Vue arbitre</button>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  COMPUTE STATS — unified for duel + multi
 // ═══════════════════════════════════════════════════════
 function computeStats() {
   const stats={};
@@ -1845,109 +1869,378 @@ function computeStats() {
   });
 
   matches.forEach(m=>{
+    if(!isMatchDone(m)) return;
     const ev=m.eventId?getEvent(m.eventId):null;
     const cat=ev?ev.cat:'prec';
+    const winners=matchWinners(m);
+    const isDraw=winners.length>1;
 
-    if(m.format==='multi'&&m.teams&&m.scores){
-      // Multi-team scoring
-      const allScored=m.teams.every(tid=>m.scores[tid]!==null&&m.scores[tid]!==undefined);
-      if(!allScored) return;
-      const scoreArr=m.teams.map(tid=>({tid,sc:Number(m.scores[tid])}));
-      const maxSc=Math.max(...scoreArr.map(x=>x.sc));
-      const winners=scoreArr.filter(x=>x.sc===maxSc);
-      scoreArr.forEach(({tid,sc})=>{
-        if(!stats[tid]) return;
-        stats[tid].pts+=sc; stats[tid].scores.push(sc);
-        if(winners.length===1&&winners[0].tid===tid){
-          stats[tid].wins++;
-          if(stats[tid].catStats[cat]) stats[tid].catStats[cat].w++;
-        } else if(winners.length>1&&winners.find(w=>w.tid===tid)){
-          stats[tid].draws++;
-        } else {
-          stats[tid].losses++;
-          if(stats[tid].catStats[cat]) stats[tid].catStats[cat].l++;
-        }
-      });
-    } else {
-      // Duel scoring
-      if(m.scoreA===null||m.scoreB===null||!stats[m.teamA]||!stats[m.teamB]) return;
-      const sA=Number(m.scoreA),sB=Number(m.scoreB);
-      stats[m.teamA].pts+=sA; stats[m.teamB].pts+=sB;
-      stats[m.teamA].scores.push(sA); stats[m.teamB].scores.push(sB);
-      if(sA>sB){
-        stats[m.teamA].wins++; stats[m.teamB].losses++;
-        if(stats[m.teamA].catStats[cat]) stats[m.teamA].catStats[cat].w++;
-        if(stats[m.teamB].catStats[cat]) stats[m.teamB].catStats[cat].l++;
-      } else if(sB>sA){
-        stats[m.teamB].wins++; stats[m.teamA].losses++;
-        if(stats[m.teamB].catStats[cat]) stats[m.teamB].catStats[cat].w++;
-        if(stats[m.teamA].catStats[cat]) stats[m.teamA].catStats[cat].l++;
+    m.teams.forEach(tid=>{
+      if(!stats[tid]) return;
+      const sc=Number(m.scores[tid]||0);
+      stats[tid].pts+=sc;
+      stats[tid].scores.push(sc);
+      if(isDraw){
+        stats[tid].draws++;
+      } else if(winners.includes(tid)){
+        stats[tid].wins++;
+        if(stats[tid].catStats[cat]) stats[tid].catStats[cat].w++;
       } else {
-        stats[m.teamA].draws++; stats[m.teamB].draws++;
+        stats[tid].losses++;
+        if(stats[tid].catStats[cat]) stats[tid].catStats[cat].l++;
       }
-    }
+    });
   });
 
   return teams.map(t=>{
     const s=stats[t.id];
-    const bonusTotal=Object.values(bonusPoints[t.id]||{}).reduce((a,b)=>a+Number(b),0);
+    // Only sum bonus points for existing categories
+    const bonusTotal = bonusCats.reduce((sum, c) => sum + Number((bonusPoints[t.id]||{})[c.id]||0), 0);
     const avg=s.scores.length?s.scores.reduce((a,b)=>a+b,0)/s.scores.length:0;
     return{...t,...s,avg,bonusTotal,totalWithBonus:s.pts+bonusTotal};
   }).sort((a,b)=>b.wins-a.wins||b.totalWithBonus-a.totalWithBonus);
 }
 
 // ═══════════════════════════════════════════════════════
-//  SCOREBOARD
+//  RANKING — per-team + per-game + highlights
 // ═══════════════════════════════════════════════════════
+function renderRanking() {
+  const el=document.getElementById('ranking-content');
+  const played=matches.filter(m=>isMatchDone(m));
+  if(!played.length){
+    el.innerHTML=`<div class="empty-state"><div class="es-icon">🏆</div><p>Saisissez des scores dans l'onglet Scores.</p></div>`;
+    return;
+  }
+  const sorted=computeStats();
+  const pOrder=[1,0,2], barH={0:100,1:78,2:60};
+
+  // Podium
+  let html=`<div class="podium">${pOrder.filter(r=>sorted[r]).map(r=>{
+    const t=sorted[r];
+    return `<div class="podium-block">
+      <div style="font-size:${r===0?'26px':'20px'}">${MEDAL[r]}</div>
+      <div style="font-family:'Bebas Neue';font-size:${r===0?'14px':'12px'};color:#fff;text-align:center;max-width:96px">${esc(t.name)}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.5)">${t.wins}V · ${t.losses}D · ${t.draws}N</div>
+      <div class="podium-bar" style="background:${MEDAL_COLS[r]};height:${barH[r]}px">${r+1}</div>
+    </div>`;
+  }).join('')}</div>`;
+
+  // Highlights
+  const mostWins  = [...sorted].sort((a,b)=>b.wins-a.wins)[0];
+  const mostLoss  = [...sorted].sort((a,b)=>b.losses-a.losses)[0];
+  const bestAvg   = [...sorted].sort((a,b)=>b.avg-a.avg)[0];
+  const mostDraws = [...sorted].sort((a,b)=>b.draws-a.draws)[0];
+  const mostBonus = [...sorted].sort((a,b)=>b.bonusTotal-a.bonusTotal)[0];
+  const mostGames = [...sorted].sort((a,b)=>b.scores.length-a.scores.length)[0];
+
+  html+=`<div class="highlight-grid mb-16">
+    <div class="highlight-card"><div class="highlight-icon">🥇</div><div>
+      <div class="highlight-label">Plus de victoires</div>
+      <div class="highlight-value" style="color:var(--orange)">${esc(mostWins.name)}</div>
+      <div class="highlight-sub">${mostWins.wins} victoire${mostWins.wins!==1?'s':''}</div></div></div>
+    <div class="highlight-card"><div class="highlight-icon">😔</div><div>
+      <div class="highlight-label">Plus de défaites</div>
+      <div class="highlight-value" style="color:var(--red)">${esc(mostLoss.name)}</div>
+      <div class="highlight-sub">${mostLoss.losses} défaite${mostLoss.losses!==1?'s':''}</div></div></div>
+    <div class="highlight-card"><div class="highlight-icon">📊</div><div>
+      <div class="highlight-label">Meilleure moyenne</div>
+      <div class="highlight-value" style="color:var(--green)">${esc(bestAvg.name)}</div>
+      <div class="highlight-sub">${bestAvg.avg.toFixed(1)} pts/match</div></div></div>
+    <div class="highlight-card"><div class="highlight-icon">🤝</div><div>
+      <div class="highlight-label">Plus de nuls</div>
+      <div class="highlight-value" style="color:var(--muted)">${esc(mostDraws.name)}</div>
+      <div class="highlight-sub">${mostDraws.draws} nul${mostDraws.draws!==1?'s':''}</div></div></div>
+    <div class="highlight-card"><div class="highlight-icon">⭐</div><div>
+      <div class="highlight-label">Plus de bonus</div>
+      <div class="highlight-value" style="color:var(--orange)">${esc(mostBonus.name)}</div>
+      <div class="highlight-sub">+${mostBonus.bonusTotal} pts</div></div></div>
+    <div class="highlight-card"><div class="highlight-icon">🎮</div><div>
+      <div class="highlight-label">Plus actif</div>
+      <div class="highlight-value" style="color:var(--blue)">${esc(mostGames.name)}</div>
+      <div class="highlight-sub">${mostGames.scores.length} match${mostGames.scores.length!==1?'s':''}</div></div></div>
+  </div>`;
+
+  // General ranking table
+  html+=`<div class="card mb-16"><div style="overflow-x:auto"><table class="rank-table">
+    <thead><tr><th>#</th><th>Équipe</th><th>V</th><th>D</th><th>N</th><th>Pts sport</th><th>Bonus</th><th>Total</th><th>Moy/match</th><th>Joués</th></tr></thead>
+    <tbody>${sorted.map((t,i)=>`<tr>
+      <td style="font-weight:700;color:${i<3?MEDAL_COLS[i]:'#999'};font-size:${i===0?'17px':'12px'}">${i<3?MEDAL[i]:i+1}</td>
+      <td><span class="dot" style="background:${t.color}"></span> <strong>${esc(t.name)}</strong></td>
+      <td style="color:var(--green);font-weight:700">${t.wins}</td>
+      <td style="color:var(--red);font-weight:700">${t.losses}</td>
+      <td style="color:var(--muted)">${t.draws}</td>
+      <td style="font-weight:700;color:var(--blue)">${t.pts}</td>
+      <td style="color:var(--orange);font-weight:700">${t.bonusTotal>0?'+'+t.bonusTotal:'—'}</td>
+      <td style="font-weight:700;color:var(--blue)">${t.totalWithBonus}</td>
+      <td style="color:var(--muted)">${t.avg.toFixed(1)}</td>
+      <td style="color:var(--muted)">${t.scores.length}</td>
+    </tr>`).join('')}</tbody>
+  </table></div></div>`;
+
+  // Performance by category
+  const cats=Object.keys(CAT_LABELS);
+  const hasCatData=played.some(m=>m.eventId&&getEvent(m.eventId));
+  if(hasCatData){
+    html+=`<div class="card mb-16">
+      <h3 style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px;margin-bottom:11px">Performances par catégorie</h3>
+      <div style="overflow-x:auto"><table class="rank-table">
+        <thead><tr><th>Équipe</th>${cats.map(c=>`<th>${CAT_LABELS[c]}</th>`).join('')}</tr></thead>
+        <tbody>${sorted.map(t=>`<tr>
+          <td><span class="dot" style="background:${t.color}"></span> <strong>${esc(t.name)}</strong></td>
+          ${cats.map(c=>{
+            const s=t.catStats[c]||{w:0,l:0}; const tot=s.w+s.l;
+            if(!tot) return '<td style="color:var(--muted)">—</td>';
+            const pct=Math.round(s.w/tot*100);
+            return `<td style="font-size:11px"><span style="color:var(--green);font-weight:700">${s.w}V</span>/<span style="color:var(--red)">${s.l}D</span> <span style="font-size:9px;color:var(--muted)">(${pct}%)</span></td>`;
+          }).join('')}
+        </tr>`).join('')}</tbody>
+      </table></div>
+    </div>`;
+  }
+
+  // ── Classement par épreuve ──────────────────────────────
+  const eventsWithResults=[...new Set(played.filter(m=>m.eventId).map(m=>m.eventId))];
+  if(eventsWithResults.length){
+    html+=`<div class="card mb-16">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <h3 style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px;margin:0">Classement par épreuve</h3>
+        <button class="btn btn-ghost btn-sm" onclick="downloadRankingPDF()">📄 PDF Classement</button>
+      </div>`;
+
+    eventsWithResults.forEach(evId=>{
+      const ev=getEvent(evId);
+      if(!ev) return;
+      const evMatches=played.filter(m=>m.eventId===evId);
+
+      // Build per-event ranking: sum scores, count wins/losses per team
+      const evStats={};
+      teams.forEach(t=>{ evStats[t.id]={pts:0,wins:0,losses:0,draws:0,played:0}; });
+
+      evMatches.forEach(m=>{
+        const winners=matchWinners(m);
+        const isDraw=winners.length>1;
+        m.teams.forEach(tid=>{
+          if(!evStats[tid]) return;
+          evStats[tid].pts+=Number(m.scores[tid]||0);
+          evStats[tid].played++;
+          if(isDraw) evStats[tid].draws++;
+          else if(winners.includes(tid)) evStats[tid].wins++;
+          else evStats[tid].losses++;
+        });
+      });
+
+      // Sort teams for this event
+      const evSorted=teams
+        .filter(t=>evStats[t.id]&&evStats[t.id].played>0)
+        .sort((a,b)=>{
+          const sA=evStats[a.id], sB=evStats[b.id];
+          return sB.wins-sA.wins || sB.pts-sA.pts;
+        });
+
+      if(!evSorted.length) return;
+
+      html+=`<div style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:20px">${ev.icon}</span>
+          <div>
+            <div style="font-family:'Bebas Neue';font-size:14px;color:var(--blue);letter-spacing:.5px">${esc(ev.name)}</div>
+            <div style="display:flex;gap:4px;margin-top:2px">
+              <span class="badge ${CAT_BADGE[ev.cat]||'badge-prec'}" style="font-size:9px">${CAT_LABELS[ev.cat]}</span>
+              <span class="badge" style="background:var(--neutral);color:var(--muted);font-size:9px">${evMatches.length} match${evMatches.length>1?'s':''}</span>
+            </div>
+          </div>
+        </div>
+        <table class="rank-table" style="font-size:11px">
+          <thead><tr><th>#</th><th>Équipe</th><th>V</th><th>D</th><th>N</th><th>Pts</th><th>Matchs</th></tr></thead>
+          <tbody>${evSorted.map((t,ri)=>{
+            const s=evStats[t.id];
+            return `<tr>
+              <td style="font-weight:700;color:${ri<3?MEDAL_COLS[ri]:'#999'}">${ri<3?MEDAL[ri]:ri+1}</td>
+              <td><span class="dot" style="background:${t.color}"></span> <strong>${esc(t.name)}</strong></td>
+              <td style="color:var(--green);font-weight:700">${s.wins}</td>
+              <td style="color:var(--red)">${s.losses}</td>
+              <td style="color:var(--muted)">${s.draws}</td>
+              <td style="font-weight:700;color:var(--blue)">${s.pts}</td>
+              <td style="color:var(--muted)">${s.played}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>`;
+    });
+
+    html+=`</div>`;
+  }
+
+  el.innerHTML=html;
+}
+
+
 // ═══════════════════════════════════════════════════════
-//  ARBITRE VIEW
+//  SCOREBOARD (TV view)
 // ═══════════════════════════════════════════════════════
-function openArbitre(matchId){
+function updateScoreboard() {
+  const rankEl=document.getElementById('sb-ranking-list');
+  const liveEl=document.getElementById('sb-live-matches');
+  if(!rankEl||!liveEl) return;
+  const anyDone=matches.some(m=>isMatchDone(m));
+  if(!anyDone){
+    rankEl.innerHTML='<div style="color:rgba(255,255,255,.3);font-size:12px">En attente de scores…</div>';
+  } else {
+    const sorted=computeStats();
+    rankEl.innerHTML=sorted.map((t,i)=>`
+      <div class="sb-rank-row">
+        <div class="sb-rank-pos" style="color:${i<3?MEDAL_COLS[i]:'rgba(255,255,255,.3)'}">${i<3?MEDAL[i]:i+1}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex:1">
+          <span class="dot" style="background:${t.color}"></span>
+          <div class="sb-rank-name">${esc(t.name)}</div>
+        </div>
+        <div class="sb-rank-stat">${t.totalWithBonus}</div>
+        <div class="sb-rank-wins">${t.wins}V</div>
+      </div>`).join('');
+  }
+  const live=matches.filter(m=>m.status==='ongoing');
+  if(!live.length){
+    liveEl.innerHTML='<div style="color:rgba(255,255,255,.3);font-size:12px">Aucun match en cours…<br><span style="font-size:10px">Passez un match en statut "▶️ En cours" depuis l\'onglet Scores.</span></div>';
+    return;
+  }
+  const isArb=arbCurrentMatch?arbCurrentMatch.id:null;
+  liveEl.innerHTML=live.slice(-5).map(m=>{
+    const ev=m.eventId?getEvent(m.eventId):null;
+    const timerTxt=(isArb===m.id)?fmtTime(arbTimer.remaining):'';
+    const timerCls=(isArb===m.id)?(arbTimer.remaining<=60?'danger':arbTimer.running?'active':''):'';
+    if(m.teams.length>2){
+      return `<div class="sb-match-live">
+        <div class="sb-match-title">${ev?ev.icon+' '+esc(ev.name):'Multi-équipes'}${m.terrain?' · 📍'+esc(m.terrain):''}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+          ${m.teams.map(tid=>{
+            const t=getTeam(tid); const sc=m.scores?m.scores[tid]:null;
+            return `<div style="text-align:center;background:rgba(255,255,255,.07);border-radius:8px;padding:6px 12px">
+              <div style="color:${t.color};font-size:11px;font-weight:700">${esc(t.name)}</div>
+              <div style="font-family:'Bebas Neue';font-size:28px;color:#fff">${sc??'—'}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        ${timerTxt?`<div class="sb-timer ${timerCls}">${timerTxt}</div>`:''}
+      </div>`;
+    }
+    const tA=getTeam(m.teams[0]),tB=getTeam(m.teams[1]);
+    const sA=m.scores?m.scores[m.teams[0]]:null, sB=m.scores?m.scores[m.teams[1]]:null;
+    return `<div class="sb-match-live">
+      <div class="sb-match-title">${ev?ev.icon+' '+esc(ev.name):'Match'}${m.terrain?' · 📍'+esc(m.terrain):''}${m.slot?' · ⏰'+m.slot:''}</div>
+      <div class="sb-match-teams">
+        <div class="sb-team-name" style="color:${tA.color}">${esc(tA.name)}</div>
+        <div class="sb-score">${sA??'—'} : ${sB??'—'}</div>
+        <div class="sb-team-name" style="color:${tB.color}">${esc(tB.name)}</div>
+      </div>
+      ${timerTxt?`<div class="sb-timer ${timerCls}">${timerTxt}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  ARBITRE VIEW — N teams
+// ═══════════════════════════════════════════════════════
+function openArbitre(matchId) {
   const sel=document.getElementById('arb-match-select');
   sel.innerHTML=`<option value="">— Choisir un match —</option>`+
     matches.map(m=>{
       const ev=m.eventId?getEvent(m.eventId):null;
-      const label=m.format==='multi'
-        ? `👥 ${ev?ev.name:'Multi'} (${(m.teams||[]).length} équipes)`
-        : `${getTeam(m.teamA).name} vs ${getTeam(m.teamB).name}${ev?' — '+ev.name:''}`;
+      const label=m.teams.length>2
+        ?`👥 ${ev?ev.name:'Multi'} (${m.teams.length} équipes)`
+        :`${getTeam(m.teams[0]).name} vs ${getTeam(m.teams[1]||m.teams[0]).name}${ev?' — '+ev.name:''}`;
       return `<option value="${m.id}"${m.id===matchId?' selected':''}>${label}</option>`;
     }).join('');
   if(matchId) arbitreSelectMatch(matchId);
   document.getElementById('arbitre-view').classList.add('open');
 }
-function closeArbitre(){ document.getElementById('arbitre-view').classList.remove('open'); }
-function arbitreSelectMatch(id){
+function closeArbitre() { document.getElementById('arbitre-view').classList.remove('open'); }
+
+function arbitreSelectMatch(id) {
   const m=matches.find(m=>m.id===id);
   arbCurrentMatch=m||null;
-  if(!m){
-    document.getElementById('arb-team-a-name').textContent='Équipe A';
-    document.getElementById('arb-team-b-name').textContent='Équipe B';
-    document.getElementById('arb-score-a').textContent='0';
-    document.getElementById('arb-score-b').textContent='0';
-    return;
+  const scoreBlock=document.getElementById('arb-score-block');
+  if(!m||!scoreBlock){ return; }
+
+  if(m.teams.length<=2){
+    // Classic 2-team UI
+    const tA=getTeam(m.teams[0]), tB=getTeam(m.teams[1]||m.teams[0]);
+    document.getElementById('arb-team-a-name').textContent=tA.name;
+    document.getElementById('arb-team-b-name').textContent=tB.name;
+    document.getElementById('arb-score-a').textContent=m.scores??(m.scores[m.teams[0]]??0);
+    document.getElementById('arb-score-b').textContent=m.scores??(m.scores[m.teams[1]]??0);
+    document.getElementById('arb-score-a').textContent=m.scores&&m.scores[m.teams[0]]!==null?(m.scores[m.teams[0]]??0):0;
+    document.getElementById('arb-score-b').textContent=m.scores&&m.teams[1]&&m.scores[m.teams[1]]!==null?(m.scores[m.teams[1]]??0):0;
+    scoreBlock.innerHTML=`
+      <span class="arb-block-label">Scores</span>
+      <div class="arb-score-row">
+        <div class="arb-score-controls">
+          <button class="arb-score-btn plus" onclick="arbScoreChange('${m.teams[0]}',1)">+</button>
+          <div class="arb-score-val" id="arb-score-a">${m.scores&&m.scores[m.teams[0]]!==null?m.scores[m.teams[0]]:0}</div>
+          <button class="arb-score-btn minus" onclick="arbScoreChange('${m.teams[0]}',-1)">−</button>
+          <div class="arb-team-lbl">${esc(tA.name)}</div>
+        </div>
+        <div style="color:rgba(255,255,255,.2);font-family:'Bebas Neue';font-size:26px">VS</div>
+        <div class="arb-score-controls">
+          <button class="arb-score-btn plus" onclick="arbScoreChange('${m.teams[1]}',1)">+</button>
+          <div class="arb-score-val" id="arb-score-b">${m.scores&&m.scores[m.teams[1]]!==null?m.scores[m.teams[1]]:0}</div>
+          <button class="arb-score-btn minus" onclick="arbScoreChange('${m.teams[1]}',-1)">−</button>
+          <div class="arb-team-lbl">${esc(tB.name)}</div>
+        </div>
+      </div>
+      <button class="arb-save-btn" onclick="arbSaveScore()">💾 Enregistrer le score</button>`;
+  } else {
+    // Multi-team UI: one row per team
+    scoreBlock.innerHTML=`
+      <span class="arb-block-label">Scores — ${m.teams.length} équipes</span>
+      ${m.teams.map(tid=>{
+        const t=getTeam(tid);
+        const sc=m.scores&&m.scores[tid]!==null?m.scores[tid]:0;
+        return `<div class="arb-multi-row">
+          <span class="arb-multi-name"><span class="dot" style="background:${t.color}"></span> ${esc(t.name)}</span>
+          <button class="arb-multi-btn minus" onclick="arbScoreChange('${tid}',-1)">−</button>
+          <div class="arb-multi-score" id="arb-sc-${tid}">${sc}</div>
+          <button class="arb-multi-btn plus" onclick="arbScoreChange('${tid}',1)">+</button>
+        </div>`;
+      }).join('')}
+      <button class="arb-save-btn" style="margin-top:10px" onclick="arbSaveScore()">💾 Enregistrer les scores</button>`;
   }
-  const tA=getTeam(m.teamA),tB=getTeam(m.teamB);
-  document.getElementById('arb-team-a-name').textContent=tA.name;
-  document.getElementById('arb-team-b-name').textContent=tB.name;
-  document.getElementById('arb-score-a').textContent=m.scoreA??0;
-  document.getElementById('arb-score-b').textContent=m.scoreB??0;
   arbTimerReset();
 }
-function arbScoreChange(side,delta){
-  const el=document.getElementById('arb-score-'+side.toLowerCase());
+
+// arbScoreChange now works with any teamId
+function arbScoreChange(teamId, delta) {
+  if(!arbCurrentMatch) return;
+  const elId = arbCurrentMatch.teams.length<=2
+    ? (teamId===arbCurrentMatch.teams[0]?'arb-score-a':'arb-score-b')
+    : `arb-sc-${teamId}`;
+  const el=document.getElementById(elId); if(!el) return;
   el.textContent=Math.max(0,(parseInt(el.textContent)||0)+delta);
 }
-function arbSaveScore(){
+
+function arbSaveScore() {
   if(!arbCurrentMatch){ showToast('Sélectionnez un match','error'); return; }
-  arbCurrentMatch.scoreA=parseInt(document.getElementById('arb-score-a').textContent)||0;
-  arbCurrentMatch.scoreB=parseInt(document.getElementById('arb-score-b').textContent)||0;
-  if(arbCurrentMatch.scores){
-    arbCurrentMatch.scores[arbCurrentMatch.teamA]=arbCurrentMatch.scoreA;
-    arbCurrentMatch.scores[arbCurrentMatch.teamB]=arbCurrentMatch.scoreB;
+  const m=arbCurrentMatch;
+  if(!m.scores) m.scores={};
+  if(m.teams.length<=2){
+    const elA=document.getElementById('arb-score-a');
+    const elB=document.getElementById('arb-score-b');
+    if(elA) m.scores[m.teams[0]]=parseInt(elA.textContent)||0;
+    if(elB&&m.teams[1]) m.scores[m.teams[1]]=parseInt(elB.textContent)||0;
+  } else {
+    m.teams.forEach(tid=>{
+      const el=document.getElementById(`arb-sc-${tid}`);
+      if(el) m.scores[tid]=parseInt(el.textContent)||0;
+    });
   }
+  // sync legacy
+  m.scoreA=m.scores[m.teams[0]];
+  if(m.teams[1]) m.scoreB=m.scores[m.teams[1]];
+  if(!m.status||m.status==='pending') m.status='ongoing';
   renderMatches(); persistState(); broadcastState();
   showToast('Score enregistré ✓','success');
 }
+
+// Timer
 function arbSetDuration(val){
   const min=Math.max(1,Math.min(60,parseInt(val)||15));
   arbTimer.duration=min*60;
@@ -1960,8 +2253,7 @@ function arbTimerStart(){
   document.getElementById('arb-start-btn').textContent='▶ En cours…';
   arbTimer.interval=setInterval(()=>{
     if(arbTimer.remaining<=0){ arbTimerFinish(); return; }
-    arbTimer.remaining--;
-    updateArbTimerDisplay(); updateScoreboard();
+    arbTimer.remaining--; updateArbTimerDisplay(); updateScoreboard();
   },1000);
 }
 function arbTimerPause(){
@@ -1972,7 +2264,8 @@ function arbTimerPause(){
 function arbTimerReset(){
   arbTimer.running=false; clearInterval(arbTimer.interval);
   arbTimer.remaining=arbTimer.duration;
-  document.getElementById('arb-start-btn').textContent='▶ Démarrer';
+  const btn=document.getElementById('arb-start-btn');
+  if(btn) btn.textContent='▶ Démarrer';
   updateArbTimerDisplay();
 }
 function arbTimerFinish(){
@@ -1992,8 +2285,7 @@ function arbTimerFinish(){
   showToast('⏰ Temps écoulé !','warning');
 }
 function updateArbTimerDisplay(){
-  const el=document.getElementById('arb-timer-display');
-  if(!el) return;
+  const el=document.getElementById('arb-timer-display'); if(!el) return;
   const pct=arbTimer.duration>0?arbTimer.remaining/arbTimer.duration:0;
   el.textContent=fmtTime(arbTimer.remaining);
   el.className='arb-timer-display';
@@ -2005,12 +2297,21 @@ function openScoreboard(){ document.getElementById('scoreboard-view').classList.
 function closeScoreboard(){ document.getElementById('scoreboard-view').classList.remove('open'); }
 
 // ═══════════════════════════════════════════════════════
-//  BONUS
+//  BONUS — fix: recompute on category deletion
 // ═══════════════════════════════════════════════════════
 function renderBonusTable(){
   const el=document.getElementById('bonus-table');
   if(!teams.length){ el.innerHTML='<div class="text-muted text-sm">Créez des équipes pour attribuer des bonus.</div>'; return; }
-  let html=`<div style="overflow-x:auto"><table class="rank-table">
+  // Clean up bonus points for deleted categories
+  teams.forEach(t=>{
+    if(!bonusPoints[t.id]) bonusPoints[t.id]={};
+    // Remove keys for categories that no longer exist
+    Object.keys(bonusPoints[t.id]).forEach(catId=>{
+      if(!bonusCats.find(c=>c.id===catId)) delete bonusPoints[t.id][catId];
+    });
+  });
+  let html=`<div style="font-size:11px;color:var(--muted);margin-bottom:11px">Points bonus par équipe. Colonne "Bonus" visible dans le classement.</div>
+  <div style="overflow-x:auto"><table class="rank-table">
     <thead><tr><th>Équipe</th>${bonusCats.map(c=>`<th><span style="color:${c.color}">●</span> ${esc(c.name)}</th>`).join('')}<th>Total</th></tr></thead>
     <tbody>`;
   teams.forEach(t=>{
@@ -2041,45 +2342,69 @@ function renderBonusCatsForm(){
     </div>`).join('');
 }
 function addBonusCat(){ bonusCats.push({id:'bonus_'+uid(),name:'Nouveau bonus',color:'#607D8B'}); renderBonusCatsForm(); }
-function removeBonusCat(idx){ bonusCats.splice(idx,1); renderBonusCatsForm(); }
+function removeBonusCat(idx){
+  const removed=bonusCats[idx];
+  bonusCats.splice(idx,1);
+  // Clean removed cat from all teams
+  if(removed) teams.forEach(t=>{ if(bonusPoints[t.id]) delete bonusPoints[t.id][removed.id]; });
+  renderBonusCatsForm();
+}
 function saveBonusCats(){
   document.querySelectorAll('#bonus-cats-form [data-bi]').forEach(inp=>{
     const i=parseInt(inp.dataset.bi); if(bonusCats[i]) bonusCats[i][inp.dataset.bf]=inp.value;
   });
-  closeModal('bonus-cat-modal'); renderBonusTable(); persistState();
+  // Cleanup: remove bonus entries for deleted categories
+  const validCatIds = new Set(bonusCats.map(c=>c.id));
+  Object.keys(bonusPoints).forEach(tid=>{
+    Object.keys(bonusPoints[tid]||{}).forEach(catId=>{
+      if(!validCatIds.has(catId)) delete bonusPoints[tid][catId];
+    });
+  });
+  closeModal('bonus-cat-modal');
+  renderBonusTable();
+  // Refresh ranking if visible so bonus totals are correct
+  if(document.getElementById('tab-ranking').classList.contains('active')) renderRanking();
+  persistState(); broadcastState();
   showToast('Catégories mises à jour ✓','success');
 }
 
+
 // ═══════════════════════════════════════════════════════
-//  DATA PERSISTENCE — localStorage + Firebase merge
+//  DATA PERSISTENCE
 // ═══════════════════════════════════════════════════════
 function getState(){
-  return{teams,matches,terrains,bonusCats,bonusPoints,tournamentFormat,sessionCode};
+  // Serialise matches (remove non-serialisable getters)
+  const serialMatches = matches.map(m=>({
+    id:m.id, teams:m.teams, scores:m.scores, eventId:m.eventId,
+    terrain:m.terrain, slot:m.slot, format:m.format, status:m.status,
+    champGroup:m.champGroup,
+    teamA:m.teams[0], teamB:m.teams[1]||null,
+    scoreA:m.scores?m.scores[m.teams[0]]:null,
+    scoreB:m.scores&&m.teams[1]?m.scores[m.teams[1]]:null,
+  }));
+  return{teams,matches:serialMatches,terrains,bonusCats,bonusPoints,tournamentFormat,sessionCode};
 }
-function applyState(s,fromRemote){
+
+function applyState(s, fromRemote) {
   if(!s) return;
   if(fromRemote){
-    // MERGE strategy: merge scores match-by-match to avoid overwriting concurrent edits
     if(s.matches&&matches.length){
       const localById={};
       matches.forEach(m=>localById[m.id]=m);
       s.matches.forEach(rm=>{
+        rm=normaliseMatch(rm);
         if(localById[rm.id]){
-          // Only take remote score if local is null
-          if(localById[rm.id].scoreA===null&&rm.scoreA!==null) localById[rm.id].scoreA=rm.scoreA;
-          if(localById[rm.id].scoreB===null&&rm.scoreB!==null) localById[rm.id].scoreB=rm.scoreB;
-          if(rm.scores&&localById[rm.id].scores){
-            Object.entries(rm.scores).forEach(([tid,sc])=>{
-              if(localById[rm.id].scores[tid]===null&&sc!==null) localById[rm.id].scores[tid]=sc;
-            });
-          }
+          const lm=localById[rm.id];
+          rm.teams.forEach(tid=>{
+            if(rm.scores&&rm.scores[tid]!==null&&(lm.scores&&lm.scores[tid]===null))
+              lm.scores[tid]=rm.scores[tid];
+          });
+          if(rm.status==='done'&&lm.status!=='done') lm.status=rm.status;
         }
       });
-      // Add new matches from remote
       const localIds=new Set(matches.map(m=>m.id));
-      s.matches.filter(m=>!localIds.has(m.id)).forEach(m=>matches.push(m));
-    } else if(s.matches) { matches=s.matches; }
-    // Non-score fields: take remote if local has fewer items
+      s.matches.filter(m=>!localIds.has(m.id)).forEach(m=>matches.push(normaliseMatch(m)));
+    } else if(s.matches) { matches=s.matches.map(normaliseMatch); }
     if(s.teams&&s.teams.length>teams.length) teams=s.teams;
     if(s.terrains) terrains=s.terrains;
     if(s.bonusCats) bonusCats=s.bonusCats;
@@ -2091,9 +2416,8 @@ function applyState(s,fromRemote){
     }
     if(s.tournamentFormat) tournamentFormat=s.tournamentFormat;
   } else {
-    // Full local restore
     if(s.teams)            teams=s.teams;
-    if(s.matches)          matches=s.matches;
+    if(s.matches)          matches=s.matches.map(normaliseMatch);
     if(s.terrains)         terrains=s.terrains;
     if(s.bonusCats)        bonusCats=s.bonusCats;
     if(s.bonusPoints)      bonusPoints=s.bonusPoints;
@@ -2108,26 +2432,29 @@ function persistState(notify){
     if(notify){
       showToast('Sauvegardé ✓','success');
       const el=document.getElementById('autosave-status');
-      if(el){ el.style.display='block'; el.textContent='✅ Données sauvegardées le '+new Date().toLocaleString('fr-FR'); setTimeout(()=>el.style.display='none',4000); }
+      if(el){ el.style.display='block'; el.textContent='✅ Sauvegardé le '+new Date().toLocaleString('fr-FR'); setTimeout(()=>el.style.display='none',4000); }
     }
   }catch(e){ showToast('Erreur localStorage','error'); }
 }
 function saveToLocalStorage(notify){ persistState(notify); }
 
 function loadFromLocalStorage(){
-  try{ const raw=localStorage.getItem(LS_KEY); if(raw) applyState(JSON.parse(raw),false); }
-  catch(e){ console.warn('Load error',e); }
+  try{
+    const raw=localStorage.getItem(LS_KEY);
+    // Try new key first, fall back to old key
+    const raw2=raw||localStorage.getItem('olympiades_v3')||localStorage.getItem('olympiades_v2');
+    if(raw2) applyState(JSON.parse(raw2),false);
+  }catch(e){ console.warn('Load error',e); }
 }
-
 function exportJSON(){
   const blob=new Blob([JSON.stringify(getState(),null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download=`olympiades_${new Date().toISOString().slice(0,10)}.json`; a.click();
-  showToast('Export JSON téléchargé ✓','success');
+  showToast('Export JSON ✓','success');
 }
 function importJSON(ev){
   const file=ev.target.files[0]; if(!file) return;
-  if(!confirm('Importer ce fichier ? Les données actuelles seront remplacées.')) return;
+  if(!confirm('Importer ? Les données actuelles seront remplacées.')) return;
   const reader=new FileReader();
   reader.onload=e=>{
     try{ applyState(JSON.parse(e.target.result),false); renderAll(); persistState(); showToast('Import réussi ✓','success'); }
@@ -2137,7 +2464,7 @@ function importJSON(ev){
 }
 function resetAll(){
   if(!confirm('Effacer TOUTES les données ?')) return;
-  if(!confirm('Dernière confirmation : tout effacer ?')) return;
+  if(!confirm('Dernière confirmation ?')) return;
   teams=[]; matches=[]; terrains=['Terrain 1','Terrain 2'];
   bonusCats=[{id:'fairplay',name:'Fair-play',color:'#4CAF50'},{id:'creativite',name:'Créativité',color:'#9C27B0'},{id:'progres',name:'Équipe la + progressée',color:'#FF9800'}];
   bonusPoints={}; sessionCode=null;
@@ -2149,87 +2476,70 @@ function renderDataSummary(){
   document.getElementById('data-summary').innerHTML=`
     <div class="reco-item"><div class="rl">Équipes</div><div class="rv">${teams.length}</div></div>
     <div class="reco-item"><div class="rl">Matchs</div><div class="rv">${matches.length}</div></div>
-    <div class="reco-item"><div class="rl">Scores</div><div class="rv">${matches.filter(m=>m.scoreA!==null).length}</div></div>
+    <div class="reco-item"><div class="rl">Scores</div><div class="rv">${matches.filter(m=>isMatchDone(m)).length}</div></div>
     <div class="reco-item"><div class="rl">Terrains</div><div class="rv">${terrains.length}</div></div>
     <div class="reco-item"><div class="rl">Épreuves</div><div class="rv">${EVENTS.length}</div></div>
-    <div class="reco-item"><div class="rl">Firebase</div><div class="rv" style="font-size:13px">${sessionCode?'🟢':'⚪'}</div></div>`;
+    <div class="reco-item"><div class="rl">Firebase</div><div class="rv">${sessionCode?'🟢':'⚪'}</div></div>`;
 }
 
 // ═══════════════════════════════════════════════════════
 //  FIREBASE SYNC
 // ═══════════════════════════════════════════════════════
-// ─── SYNC INDICATOR ──────────────────────────────────────────
-let _syncLastTs = 0;
-function updateSyncIndicator(state, msg) {
-  const el  = document.getElementById('sync-indicator');
-  const txt = document.getElementById('sync-indicator-text');
-  const dot = document.getElementById('sync-dot');
-  if (!el || !txt) return;
-  el.className = 'info-box sync-indicator-' + state;
-  const dotHtml = `<span class="sync-dot ${state}" id="sync-dot"></span>`;
-  txt.innerHTML  = dotHtml + ' ' + msg;
-  if (state === 'ok') _syncLastTs = Date.now();
-  const lastEl = document.getElementById('sync-last-update');
-  if (lastEl && _syncLastTs) lastEl.textContent = 'Dernière sync: ' + new Date(_syncLastTs).toLocaleTimeString('fr-FR');
+function updateSyncIndicator(state,msg){
+  const el=document.getElementById('sync-indicator');
+  const txt=document.getElementById('sync-indicator-text');
+  if(!el||!txt) return;
+  el.className='info-box sync-indicator-'+state;
+  txt.innerHTML=`<span class="sync-dot ${state}"></span> ${msg}`;
+  if(state==='ok') _syncLastTs=Date.now();
+  const lastEl=document.getElementById('sync-last-update');
+  if(lastEl&&_syncLastTs) lastEl.textContent='Sync: '+new Date(_syncLastTs).toLocaleTimeString('fr-FR');
 }
-setInterval(() => {
-  const lastEl = document.getElementById('sync-last-update');
-  if (lastEl && _syncLastTs) {
-    const s = Math.round((Date.now() - _syncLastTs) / 1000);
-    lastEl.textContent = s < 5 ? 'Sync: à l\'instant' : `Sync: il y a ${s}s`;
+setInterval(()=>{
+  const lastEl=document.getElementById('sync-last-update');
+  if(lastEl&&_syncLastTs){
+    const s=Math.round((Date.now()-_syncLastTs)/1000);
+    lastEl.textContent=s<5?'Sync: à l\'instant':`Sync: il y a ${s}s`;
   }
-}, 2000);
+},2000);
 
-function updateFirebaseStatus(state, msg){
-  const el=document.getElementById('firebase-status-badge');
+function updateFirebaseStatus(state,msg){
   const badge=document.getElementById('sync-status-badge');
-  if(!el) return;
-  el.className='firebase-status '+state;
-  el.textContent=msg;
-  if(state==='ok'){
-    badge.textContent='🔥 '+sessionCode; badge.className='sync-badge connected';
-  } else if(state==='err'){
-    badge.textContent='📡 Erreur sync'; badge.className='sync-badge';
-  } else {
-    badge.textContent='📡 '+(sessionCode||'Hors-ligne'); badge.className='sync-badge';
-  }
-  updateSyncIndicator(state, msg);
+  if(!badge) return;
+  if(state==='ok'){ badge.textContent='🔥 '+sessionCode; badge.className='sync-badge connected'; }
+  else if(state==='err'){ badge.textContent='📡 Erreur'; badge.className='sync-badge'; }
+  else { badge.textContent='📡 '+(sessionCode||'Hors-ligne'); badge.className='sync-badge'; }
+  updateSyncIndicator(state,msg);
 }
 
 function broadcastState(){
   if(!sessionCode||!_fbReady) return;
-  const {db,doc,setDoc,serverTimestamp}=window._firebase;
-  const payload={ ...getState(), _deviceId:deviceId, _ts:Date.now(), updatedAt:serverTimestamp() };
-  setDoc(doc(db,'sessions',sessionCode), payload)
-    .catch(e=>console.warn('Firebase write error',e));
+  const{db,doc,setDoc,serverTimestamp}=window._firebase;
+  const payload={...getState(),_deviceId:deviceId,_ts:Date.now(),updatedAt:serverTimestamp()};
+  setDoc(doc(db,'sessions',sessionCode),payload).catch(e=>console.warn('Firebase write',e));
 }
 
 function subscribeFirebase(code){
   if(_fbUnsub){ _fbUnsub(); _fbUnsub=null; }
-  const {db,doc,onSnapshot}=window._firebase;
+  const{db,doc,onSnapshot}=window._firebase;
   updateFirebaseStatus('wait','🔄 Connexion à la session…');
-  _fbUnsub=onSnapshot(doc(db,'sessions',code), snap=>{
+  _fbUnsub=onSnapshot(doc(db,'sessions',code),snap=>{
     if(!snap.exists()){ updateFirebaseStatus('ok','✅ Session créée — en attente d\'autres appareils'); return; }
     const data=snap.data();
     updateFirebaseStatus('ok',`✅ Connecté · session ${code}`);
-    if(data._deviceId===deviceId) return; // own write, ignore
-    if(data._ts&&data._ts<=_lastRemoteTs) return; // stale
+    if(data._deviceId===deviceId) return;
+    if(data._ts&&data._ts<=_lastRemoteTs) return;
     _lastRemoteTs=data._ts||0;
-    applyState(data, true);
-    renderAll();
-  }, err=>{
-    console.warn('Firebase listen error',err);
-    updateFirebaseStatus('err','❌ Erreur Firebase : '+err.message);
-  });
+    applyState(data,true); renderAll();
+  },err=>{ console.warn('Firebase listen',err); updateFirebaseStatus('err','❌ '+err.message); });
 }
 
 function generateSessionCode(){
   sessionCode=Math.random().toString(36).substr(2,6).toUpperCase();
   document.getElementById('session-code-display').textContent=sessionCode;
-  persistState();
-  syncDevices=[]; updateDeviceList();
+  persistState(); syncDevices=[]; updateDeviceList();
   if(_fbReady) subscribeFirebase(sessionCode);
-  else showToast('Firebase pas encore prêt — réessayez dans 2 secondes','warning');
+  else showToast('Firebase pas encore prêt','warning');
 }
 function copySessionCode(){
   if(!sessionCode){ showToast('Générez d\'abord un code','error'); return; }
@@ -2242,7 +2552,7 @@ function joinSession(){
   document.getElementById('session-code-display').textContent=sessionCode;
   persistState();
   if(_fbReady){ subscribeFirebase(sessionCode); showToast('Session rejointe ✓','success'); }
-  else showToast('Firebase pas encore prêt — réessayez dans 2 secondes','warning');
+  else showToast('Firebase pas encore prêt','warning');
 }
 function updateDeviceList(){
   const el=document.getElementById('device-list'); if(!el) return;
@@ -2251,15 +2561,15 @@ function updateDeviceList(){
 }
 
 // ═══════════════════════════════════════════════════════
-//  PDF
+//  PDF GENERATION
 // ═══════════════════════════════════════════════════════
 const PDF_BLUE=[30,58,95],PDF_ORANGE=[232,89,12],PDF_GREEN=[45,158,95],PDF_GRAY=[240,237,232];
 function pdfHeader(doc,title,sub){
-  doc.setFillColor(...PDF_BLUE); doc.rect(0,0,210,28,'F');
-  doc.setFillColor(...PDF_ORANGE); doc.rect(0,26,210,2,'F');
-  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(17);
+  doc.setFillColor(...PDF_BLUE);doc.rect(0,0,210,28,'F');
+  doc.setFillColor(...PDF_ORANGE);doc.rect(0,26,210,2,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(17);
   doc.text(title,14,12);
-  if(sub){ doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text(sub,14,21); }
+  if(sub){doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text(sub,14,21);}
   doc.setTextColor(30,30,30); return 36;
 }
 function pdfFooter(doc){
@@ -2270,56 +2580,53 @@ function pdfFooter(doc){
 function downloadPlanningPDF(){
   const{jsPDF}=window.jspdf; const doc=new jsPDF();
   let y=pdfHeader(doc,'OLYMPIADES — PLANNING',`${teams.length} équipes · ${matches.length} matchs`);
-  doc.autoTable({startY:y,head:[['#','Heure','Terrain','Équipe A','Score','Équipe B','Épreuve','Résultat']],
+  doc.autoTable({startY:y,head:[['#','Heure','Terrain','Équipes','Score','Épreuve','Statut']],
     body:matches.map((m,i)=>{
       const ev=m.eventId?getEvent(m.eventId):null;
-      if(m.format==='multi'){
-        const teamNames=(m.teams||[]).map(tid=>getTeam(tid).name).join(', ');
-        return[i+1,m.slot||'—',m.terrain||'—',teamNames,'Multi','—',ev?ev.name:'—','Multi-équipes'];
-      }
-      const tA=getTeam(m.teamA),tB=getTeam(m.teamB);
-      const w=m.scoreA!==null&&m.scoreB!==null?(m.scoreA>m.scoreB?tA.name:m.scoreB>m.scoreA?tB.name:'Égalité'):'En attente';
-      return[i+1,m.slot||'—',m.terrain||'—',tA.name,`${m.scoreA??'—'}:${m.scoreB??'—'}`,tB.name,ev?ev.name:'—',w];
+      const teamNames=m.teams.map(tid=>getTeam(tid).name).join(' vs ');
+      const scoreStr=m.teams.map(tid=>m.scores?m.scores[tid]??'—':'—').join(' : ');
+      const st={pending:'⏳',ongoing:'▶️',done:'✅'}[m.status||'pending'];
+      return[i+1,m.slot||'—',m.terrain||'—',teamNames,scoreStr,ev?ev.name:'—',st];
     }),
-    styles:{fontSize:7.5,cellPadding:2.5},headStyles:{fillColor:PDF_ORANGE,textColor:255},alternateRowStyles:{fillColor:PDF_GRAY},margin:{left:14,right:14}});
+    styles:{fontSize:7.5,cellPadding:2.5},headStyles:{fillColor:PDF_ORANGE,textColor:255},
+    alternateRowStyles:{fillColor:PDF_GRAY},margin:{left:14,right:14}});
   pdfFooter(doc); doc.save('olympiades_planning.pdf'); showToast('PDF Planning ✓','success');
 }
+
 function downloadTeamSheetsPDF(){
-  if(!teams.length){ showToast('Aucune équipe','error'); return; }
+  if(!teams.length){showToast('Aucune équipe','error');return;}
   const{jsPDF}=window.jspdf; const doc=new jsPDF();
   teams.forEach((t,ti)=>{
     if(ti>0) doc.addPage();
     let y=pdfHeader(doc,`FICHE : ${t.name.toUpperCase()}`,`Joueurs : ${t.players.join(', ')||'—'}`);
-    const tm=matches.filter(m=>m.teamA===t.id||m.teamB===t.id).sort((a,b)=>(a.slot||'').localeCompare(b.slot||''));
-    if(!tm.length){ doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text('Aucun match.',14,y); return; }
-    doc.autoTable({startY:y,head:[['#','Heure','Terrain','Adversaire','Score','Épreuve','Résultat']],
+    const tm=matches.filter(m=>m.teams.includes(t.id)).sort((a,b)=>(a.slot||'').localeCompare(b.slot||''));
+    if(!tm.length){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text('Aucun match.',14,y);return;}
+    doc.autoTable({startY:y,head:[['#','Heure','Terrain','Adversaires','Mon score','Résultat']],
       body:tm.map((m,i)=>{
         const ev=m.eventId?getEvent(m.eventId):null;
-        if(m.format==='multi'){
-          const others=(m.teams||[]).filter(tid=>tid!==t.id).map(tid=>getTeam(tid).name).join(', ');
-          const myPts=m.scores?m.scores[t.id]:null;
-          return[i+1,m.slot||'—',m.terrain||'—',others,myPts??'—',ev?ev.name:'—','Multi'];
-        }
-        const isA=m.teamA===t.id; const opp=getTeam(isA?m.teamB:m.teamA);
-        const my=isA?m.scoreA:m.scoreB,op=isA?m.scoreB:m.scoreA;
-        const res=my!==null&&op!==null?(my>op?'✓ Victoire':my<op?'✗ Défaite':'= Égalité'):'En attente';
-        return[i+1,m.slot||'—',m.terrain||'—',opp.name,`${my??'—'} — ${op??'—'}`,ev?ev.name:'—',res];
+        const others=m.teams.filter(tid=>tid!==t.id).map(tid=>getTeam(tid).name).join(', ');
+        const myPts=m.scores?m.scores[t.id]:null;
+        const winners=isMatchDone(m)?matchWinners(m):[];
+        const res=!isMatchDone(m)?'En attente':winners.length>1?'= Égalité':winners.includes(t.id)?'✓ Victoire':'✗ Défaite';
+        return[i+1,m.slot||'—',m.terrain||'—',others,myPts??'—',res];
       }),
-      styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:PDF_BLUE,textColor:255},alternateRowStyles:{fillColor:PDF_GRAY},margin:{left:14,right:14}});
+      styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:PDF_BLUE,textColor:255},
+      alternateRowStyles:{fillColor:PDF_GRAY},margin:{left:14,right:14}});
   });
   pdfFooter(doc); doc.save('olympiades_fiches_equipes.pdf'); showToast('Fiches équipes ✓','success');
 }
+
 function downloadRulesAllPDF(){
   const{jsPDF}=window.jspdf; const doc=new jsPDF();
   let y=pdfHeader(doc,'OLYMPIADES — RÈGLES',`${EVENTS.length} épreuves`);
   EVENTS.forEach((ev,ei)=>{
     if(ei>0&&y>248){doc.addPage();y=18;}
-    doc.setFillColor(...PDF_BLUE); doc.roundedRect(14,y-4,182,9,1.5,1.5,'F');
+    doc.setFillColor(...PDF_BLUE);doc.roundedRect(14,y-4,182,9,1.5,1.5,'F');
     doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(10);
-    doc.text(`${ev.name.toUpperCase()}  ·  ${CAT_LABELS[ev.cat]}  ·  ${ev.dur}  ·  ${ev.minTeams||2}–${ev.maxTeams>=99?'∞':ev.maxTeams||2} équipes`,16,y+2);
+    doc.text(`${ev.name.toUpperCase()}  ·  ${CAT_LABELS[ev.cat]}  ·  ${ev.dur}`,16,y+2);
     y+=13;
     doc.setTextColor(80,80,80);doc.setFont('helvetica','normal');doc.setFontSize(8.5);
-    const dl=doc.splitTextToSize(ev.desc,182); doc.text(dl,14,y); y+=dl.length*4+3;
+    const dl=doc.splitTextToSize(ev.desc,182);doc.text(dl,14,y);y+=dl.length*4+3;
     ev.rules.forEach(r=>{
       if(y>275){doc.addPage();y=18;}
       doc.setFillColor(...PDF_ORANGE);doc.circle(17.5,y-1.5,1.5,'F');
@@ -2329,53 +2636,136 @@ function downloadRulesAllPDF(){
     doc.setFillColor(232,245,233);doc.roundedRect(14,y,182,9,1.5,1.5,'F');
     doc.setTextColor(...PDF_GREEN);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text('SCORE : ',16,y+6);
     doc.setFont('helvetica','normal');doc.setTextColor(30,30,30);
-    doc.text(doc.splitTextToSize(ev.scoring,155),34,y+6); y+=14;
+    doc.text(doc.splitTextToSize(ev.scoring,155),34,y+6);y+=14;
   });
-  pdfFooter(doc); doc.save('olympiades_regles_toutes.pdf'); showToast('PDF Règles ✓','success');
+  pdfFooter(doc);doc.save('olympiades_regles_toutes.pdf');showToast('PDF Règles ✓','success');
 }
 function downloadEventRulesPDF(eventId){
-  const ev=EVENTS.find(e=>e.id===eventId); if(!ev) return;
-  const{jsPDF}=window.jspdf; const doc=new jsPDF();
-  let y=pdfHeader(doc,ev.name.toUpperCase(),`${CAT_LABELS[ev.cat]} · ${ENV_LABELS[ev.env]} · ${ev.dur} · ${ev.minTeams||2}–${ev.maxTeams>=99?'∞':ev.maxTeams||2} équipes`);
+  const ev=EVENTS.find(e=>e.id===eventId);if(!ev)return;
+  const{jsPDF}=window.jspdf;const doc=new jsPDF();
+  let y=pdfHeader(doc,ev.name.toUpperCase(),`${CAT_LABELS[ev.cat]} · ${ENV_LABELS[ev.env]} · ${ev.dur}`);
   doc.setTextColor(70,70,70);doc.setFont('helvetica','normal');doc.setFontSize(9.5);
-  const dl=doc.splitTextToSize(ev.desc,182); doc.text(dl,14,y); y+=dl.length*5+8;
+  const dl=doc.splitTextToSize(ev.desc,182);doc.text(dl,14,y);y+=dl.length*5+8;
   doc.setTextColor(...PDF_BLUE);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('RÈGLES DU JEU',14,y);y+=7;
   ev.rules.forEach(r=>{
     if(y>265){doc.addPage();y=20;}
     doc.setFillColor(...PDF_ORANGE);doc.circle(18,y-2,2,'F');
     doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(30,30,30);
-    const rl=doc.splitTextToSize(r,168); doc.text(rl,23,y); y+=rl.length*5+3;
+    const rl=doc.splitTextToSize(r,168);doc.text(rl,23,y);y+=rl.length*5+3;
   });
   if(y>265){doc.addPage();y=20;}
   doc.setFillColor(232,245,233);doc.roundedRect(14,y-3,182,14,3,3,'F');
   doc.setTextColor(...PDF_GREEN);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('SCORE : ',17,y+5);
   doc.setFont('helvetica','normal');doc.setTextColor(30,30,30);doc.text(doc.splitTextToSize(ev.scoring,150),38,y+5);
   doc.setFontSize(7);doc.setTextColor(160);doc.text(`Olympiades · ${ev.name}`,14,290);
-  doc.save(`regle_${ev.id}.pdf`); showToast(`Règles de ${ev.name} ✓`,'success');
+  doc.save(`regle_${ev.id}.pdf`);showToast(`Règles de ${ev.name} ✓`,'success');
 }
-function downloadCurrentRulesPDF(){ if(currentRulesEvent) downloadEventRulesPDF(currentRulesEvent.id); }
+function downloadCurrentRulesPDF(){if(currentRulesEvent) downloadEventRulesPDF(currentRulesEvent.id);}
+
 function downloadRankingPDF(){
   const{jsPDF}=window.jspdf; const doc=new jsPDF();
-  let y=pdfHeader(doc,'OLYMPIADES — CLASSEMENT',`Généré le ${new Date().toLocaleDateString('fr-FR')}`);
+  let y=pdfHeader(doc,'OLYMPIADES — CLASSEMENT COMPLET',`Généré le ${new Date().toLocaleDateString('fr-FR')} · ${teams.length} équipes`);
+
   const sorted=computeStats();
-  doc.autoTable({startY:y,head:[['Pos','Équipe','V','D','N','Pts','Bonus','Total','Moy']],
+  // General table
+  doc.setTextColor(...PDF_BLUE);doc.setFont('helvetica','bold');doc.setFontSize(11);
+  doc.text('CLASSEMENT GÉNÉRAL',14,y);y+=5;
+  doc.autoTable({startY:y,
+    head:[['#','Équipe','V','D','N','Pts sport','Bonus','Total','Moy']],
     body:sorted.map((t,i)=>[i<3?['🥇','🥈','🥉'][i]:i+1,t.name,t.wins,t.losses,t.draws,t.pts,t.bonusTotal>0?'+'+t.bonusTotal:'—',t.totalWithBonus,t.avg.toFixed(1)]),
-    styles:{fontSize:8.5,cellPadding:2.5},headStyles:{fillColor:PDF_BLUE,textColor:255},alternateRowStyles:{fillColor:PDF_GRAY},margin:{left:14,right:14}});
-  pdfFooter(doc); doc.save('olympiades_classement.pdf'); showToast('PDF Classement ✓','success');
+    styles:{fontSize:8.5,cellPadding:2.5},headStyles:{fillColor:PDF_BLUE,textColor:255},
+    alternateRowStyles:{fillColor:PDF_GRAY},margin:{left:14,right:14}});
+  y=doc.lastAutoTable.finalY+10;
+
+  // Per-event rankings
+  const played=matches.filter(m=>isMatchDone(m));
+  const eventsWithResults=[...new Set(played.filter(m=>m.eventId).map(m=>m.eventId))];
+
+  eventsWithResults.forEach(evId=>{
+    const ev=getEvent(evId); if(!ev) return;
+    const evMatches=played.filter(m=>m.eventId===evId);
+    const evStats={};
+    teams.forEach(t=>{ evStats[t.id]={pts:0,wins:0,losses:0,draws:0,played:0}; });
+    evMatches.forEach(m=>{
+      const winners=matchWinners(m); const isDraw=winners.length>1;
+      m.teams.forEach(tid=>{
+        if(!evStats[tid]) return;
+        evStats[tid].pts+=Number(m.scores[tid]||0); evStats[tid].played++;
+        if(isDraw) evStats[tid].draws++;
+        else if(winners.includes(tid)) evStats[tid].wins++;
+        else evStats[tid].losses++;
+      });
+    });
+    const evSorted=teams.filter(t=>evStats[t.id]&&evStats[t.id].played>0)
+      .sort((a,b)=>evStats[b.id].wins-evStats[a.id].wins||evStats[b.id].pts-evStats[a.id].pts);
+    if(!evSorted.length) return;
+
+    if(y>220){doc.addPage();y=20;}
+    doc.setTextColor(...PDF_BLUE);doc.setFont('helvetica','bold');doc.setFontSize(10);
+    doc.text(`${ev.name.toUpperCase()}  ·  ${CAT_LABELS[ev.cat]}`,14,y);y+=4;
+    doc.autoTable({startY:y,
+      head:[['#','Équipe','V','D','N','Pts','Matchs']],
+      body:evSorted.map((t,ri)=>[ri<3?['🥇','🥈','🥉'][ri]:ri+1,t.name,evStats[t.id].wins,evStats[t.id].losses,evStats[t.id].draws,evStats[t.id].pts,evStats[t.id].played]),
+      styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:PDF_ORANGE,textColor:255},
+      alternateRowStyles:{fillColor:PDF_GRAY},margin:{left:14,right:14}});
+    y=doc.lastAutoTable.finalY+8;
+  });
+
+  pdfFooter(doc);
+  doc.save('olympiades_classement.pdf');
+  showToast('PDF Classement ✓','success');
 }
-function printPlanning(){ window.print(); }
+
+
+function downloadScoresPDF(){
+  const{jsPDF}=window.jspdf;const doc=new jsPDF();
+  let y=pdfHeader(doc,'OLYMPIADES — SCORES ACTUELS',`${new Date().toLocaleString('fr-FR')} · ${matches.filter(m=>isMatchDone(m)).length}/${matches.length} matchs terminés`);
+  // Group by event
+  const byEvent={};
+  matches.forEach(m=>{
+    const key=m.eventId||'__none__';
+    if(!byEvent[key]) byEvent[key]=[];
+    byEvent[key].push(m);
+  });
+  Object.entries(byEvent).forEach(([evId,ms])=>{
+    if(y>240){doc.addPage();y=20;}
+    const ev=evId!=='__none__'?getEvent(evId):null;
+    if(ev){
+      doc.setFillColor(...PDF_BLUE);doc.roundedRect(14,y-4,182,8,1.5,1.5,'F');
+      doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(10);
+      doc.text(`${ev.name.toUpperCase()}`,16,y+1);y+=12;
+    }
+    doc.autoTable({startY:y,
+      head:[['Équipes','Score','Statut','Terrain','Heure']],
+      body:ms.map(m=>{
+        const teamNames=m.teams.map(tid=>getTeam(tid).name).join(' vs ');
+        const scoreStr=m.teams.map(tid=>m.scores?m.scores[tid]??'—':'—').join(' : ');
+        const st={pending:'⏳ En attente',ongoing:'▶️ En cours',done:'✅ Terminé'}[m.status||'pending'];
+        const winners=isMatchDone(m)?matchWinners(m):[];
+        const winStr=winners.length===1?`🏆 ${getTeam(winners[0]).name}`:winners.length>1?'Égalité':'';
+        return[teamNames+'\n'+winStr,scoreStr,st,m.terrain||'—',m.slot||'—'];
+      }),
+      styles:{fontSize:8,cellPadding:2.5},
+      headStyles:{fillColor:PDF_ORANGE,textColor:255},
+      alternateRowStyles:{fillColor:PDF_GRAY},
+      columnStyles:{1:{halign:'center',fontStyle:'bold'}},
+      margin:{left:14,right:14}});
+    y=doc.lastAutoTable.finalY+8;
+  });
+  pdfFooter(doc);doc.save('olympiades_scores.pdf');showToast('PDF Scores ✓','success');
+}
+
+function printPlanning(){window.print();}
 
 // ═══════════════════════════════════════════════════════
 //  RENDER ALL
 // ═══════════════════════════════════════════════════════
-function _renderAllBase(){
-  _doRenderAll();
-}
-function _doRenderAll(){
+function renderAll(){
   renderTeams(); renderReco(); renderTerrains(); renderMatches();
   renderEventsLibrary(); updateEventsNeededInfo(); updateFormatInfo();
   renderPlanningGrid(); renderBonusTable();
-  if(document.getElementById('scoreboard-view').classList.contains('open')) updateScoreboard();
+  if(document.getElementById('tab-scores')?.classList.contains('active')) renderScoresTab();
+  if(document.getElementById('scoreboard-view')?.classList.contains('open')) updateScoreboard();
   if(sessionCode){
     document.getElementById('session-code-display').textContent=sessionCode;
     document.getElementById('sync-status-badge').textContent='🔥 '+sessionCode;
@@ -2389,477 +2779,21 @@ function _doRenderAll(){
 // ═══════════════════════════════════════════════════════
 loadFromLocalStorage();
 renderAll();
+updateSyncIndicator('wait','⏳ Firebase en cours d\'initialisation…');
 
-// Firebase ready handler
-window.addEventListener('firebase-ready', ()=>{
+window.addEventListener('firebase-ready',()=>{
   _fbReady=true;
   updateFirebaseStatus('ok','✅ Firebase connecté — en attente d\'un code de session');
   if(sessionCode) subscribeFirebase(sessionCode);
 });
-// Fallback if module loaded before event fired
-if(window._firebaseReady){ _fbReady=true; updateFirebaseStatus('ok','✅ Firebase connecté'); if(sessionCode) subscribeFirebase(sessionCode); }
+if(window._firebaseReady){
+  _fbReady=true;
+  updateFirebaseStatus('ok','✅ Firebase connecté');
+  if(sessionCode) subscribeFirebase(sessionCode);
+}
 
-// Auto-save every 30s
 setInterval(()=>persistState(),30000);
-// Scoreboard refresh
-setInterval(()=>{ if(document.getElementById('scoreboard-view').classList.contains('open')) updateScoreboard(); },3000);
-
-// ═══════════════════════════════════════════════════════
-//  SCORES TAB — injected after main script
-// ═══════════════════════════════════════════════════════
-function setScoreFilter(f) {
-  scoreFilter = f;
-  ['all','pending','ongoing','done'].forEach(k => {
-    const b = document.getElementById('sf-'+k);
-    if (b) b.className = 'btn btn-sm ' + (k===f ? 'btn-primary' : 'btn-ghost');
-  });
-  renderScoresTab();
-}
-
-function setMatchStatus(id, status) {
-  const m = matches.find(m => m.id === id);
-  if (!m) return;
-  m.status = status;
-  // Auto-set scores to 0 if going to "ongoing" from pending
-  if (status === 'ongoing' && m.scoreA === null) m.scoreA = 0;
-  if (status === 'ongoing' && m.scoreB === null) m.scoreB = 0;
-  // Update scoreboard live display
-  persistState(); broadcastState();
-  renderScoresTab();
-  if (document.getElementById('scoreboard-view').classList.contains('open')) updateScoreboard();
-}
-
-function renderScoresTab() {
-  const el = document.getElementById('scores-list');
-  if (!el) return;
-
-  // Update sub-title
-  const sub = document.getElementById('scores-sub');
-  const done    = matches.filter(m => m.status === 'done').length;
-  const ongoing = matches.filter(m => m.status === 'ongoing').length;
-  const pending = matches.filter(m => (!m.status || m.status === 'pending')).length;
-  if (sub) sub.textContent = `${matches.length} matchs · ✅ ${done} terminés · ▶️ ${ongoing} en cours · ⏳ ${pending} en attente`;
-
-  // Filter count
-  const countEl = document.getElementById('scores-filter-count');
-  let filtered = matches;
-  if (scoreFilter === 'pending')  filtered = matches.filter(m => !m.status || m.status === 'pending');
-  if (scoreFilter === 'ongoing')  filtered = matches.filter(m => m.status === 'ongoing');
-  if (scoreFilter === 'done')     filtered = matches.filter(m => m.status === 'done');
-  if (countEl) countEl.textContent = `${filtered.length} match${filtered.length!==1?'s':''}`;
-
-  if (!matches.length) {
-    el.innerHTML = `<div class="empty-state"><div class="es-icon">🎯</div><p>Aucun match généré.<br>Allez dans l'onglet Programme pour créer vos matchs.</p></div>`;
-    return;
-  }
-  if (!filtered.length) {
-    el.innerHTML = `<div class="empty-state"><div class="es-icon">🔍</div><p>Aucun match dans cette catégorie.</p></div>`;
-    return;
-  }
-
-  // Group by champGroup / eventId for championship
-  const grouped = {};
-  filtered.forEach(m => {
-    const key = m.champGroup || m.eventId || '__free__';
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(m);
-  });
-
-  let html = '';
-  const isChamp = tournamentFormat === 'championship' && matches.some(m => m.champGroup || m.format === 'multi');
-
-  Object.entries(grouped).forEach(([key, items]) => {
-    if (isChamp && key !== '__free__') {
-      const ev = getEvent(key);
-      if (ev) html += `<div class="champ-group-header">${ev.icon} ${esc(ev.name)} <span style="font-size:11px;opacity:.7;font-family:Inter;font-weight:400;margin-left:8px">${items.length} match${items.length>1?'s':''}</span></div>`;
-    }
-    items.forEach((m, i) => {
-      html += m.format === 'multi' ? renderScoreCardMulti(m) : renderScoreCardDuel(m);
-    });
-  });
-  el.innerHTML = html;
-}
-
-function renderScoreCardDuel(m) {
-  const tA = getTeam(m.teamA), tB = getTeam(m.teamB);
-  const ev = m.eventId ? getEvent(m.eventId) : null;
-  const st = m.status || 'pending';
-  const wA = st==='done' && m.scoreA !== null && m.scoreB !== null && m.scoreA > m.scoreB;
-  const wB = st==='done' && m.scoreA !== null && m.scoreB !== null && m.scoreB > m.scoreA;
-
-  const statusBtns = `
-    <div style="display:flex;gap:4px;flex-wrap:wrap">
-      <button class="status-pill ${st==='pending'?'ongoing':'pending'}" onclick="setMatchStatus('${m.id}','${st==='pending'?'ongoing':'pending'}')">
-        ${st==='pending'?'▶️ Démarrer':'⏹ Annuler'}
-      </button>
-      ${st==='ongoing'||st==='done' ? `<button class="status-pill done" onclick="setMatchStatus('${m.id}','${st==='done'?'ongoing':'done'}')">
-        ${st==='done'?'↩ Rouvrir':'✅ Terminer'}</button>` : ''}
-    </div>`;
-
-  return `
-  <div class="score-card status-${st}">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:5px;flex:1">
-        ${ev ? `<span style="font-size:14px">${ev.icon}</span><span style="font-size:12px;font-weight:600;color:var(--blue)">${esc(ev.name)}</span>` : '<span style="font-size:12px;color:var(--muted)">Épreuve non définie</span>'}
-        ${m.terrain ? `<span class="badge" style="background:var(--blue-light);color:var(--blue);font-size:9px">📍${esc(m.terrain)}</span>` : ''}
-        ${m.slot    ? `<span class="badge" style="background:#F3E5F5;color:#6A1B9A;font-size:9px">⏰${m.slot}</span>` : ''}
-      </div>
-      <span class="status-pill ${st}" style="cursor:default">${st==='pending'?'⏳ En attente':st==='ongoing'?'▶️ En cours':'✅ Terminé'}</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <div style="flex:1;text-align:right">
-        <div style="font-size:13px;font-weight:700;color:${wA?tA.color:'var(--text)'}">
-          <span class="dot" style="background:${tA.color}"></span> ${esc(tA.name)} ${wA?'🏆':''}
-        </div>
-        ${tA.players.length ? `<div style="font-size:10px;color:var(--muted);margin-top:2px">${tA.players.slice(0,3).map(p=>esc(p)).join(', ')}${tA.players.length>3?'…':''}</div>` : ''}
-      </div>
-      <div class="score-wrap" style="flex-shrink:0">
-        <input class="score-input" type="number" min="0" value="${m.scoreA??''}" placeholder="—"
-          ${st==='done'?'readonly style="color:var(--green);font-size:22px"':''}
-          oninput="setScoreFromTab('${m.id}','A',this.value)">
-        <span class="score-sep">:</span>
-        <input class="score-input" type="number" min="0" value="${m.scoreB??''}" placeholder="—"
-          ${st==='done'?'readonly style="color:var(--green);font-size:22px"':''}
-          oninput="setScoreFromTab('${m.id}','B',this.value)">
-      </div>
-      <div style="flex:1;text-align:left">
-        <div style="font-size:13px;font-weight:700;color:${wB?tB.color:'var(--text)'}">
-          ${wB?'🏆':''} ${esc(tB.name)} <span class="dot" style="background:${tB.color};margin-left:3px"></span>
-        </div>
-        ${tB.players.length ? `<div style="font-size:10px;color:var(--muted);margin-top:2px">${tB.players.slice(0,3).map(p=>esc(p)).join(', ')}${tB.players.length>3?'…':''}</div>` : ''}
-      </div>
-    </div>
-    <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-      ${statusBtns}
-      <button class="btn btn-ghost btn-sm" onclick="openArbitre('${m.id}')">⚖️ Vue arbitre</button>
-    </div>
-  </div>`;
-}
-
-function renderScoreCardMulti(m) {
-  const ev = m.eventId ? getEvent(m.eventId) : null;
-  const st = m.status || 'pending';
-  const teamIds = m.teams || [m.teamA, m.teamB];
-  const scores  = m.scores || {};
-  const allDone = teamIds.every(tid => scores[tid] !== null && scores[tid] !== undefined);
-  let winnerIds = [];
-  if (allDone) {
-    const maxSc = Math.max(...teamIds.map(tid => Number(scores[tid])));
-    winnerIds = teamIds.filter(tid => Number(scores[tid]) === maxSc);
-  }
-
-  const statusBtns = `
-    <div style="display:flex;gap:4px;flex-wrap:wrap">
-      <button class="status-pill ${st==='pending'?'ongoing':'pending'}" onclick="setMatchStatus('${m.id}','${st==='pending'?'ongoing':'pending'}')">
-        ${st==='pending'?'▶️ Démarrer':'⏹ Annuler'}
-      </button>
-      ${st==='ongoing'||st==='done' ? `<button class="status-pill done" onclick="setMatchStatus('${m.id}','${st==='done'?'ongoing':'done'}')">
-        ${st==='done'?'↩ Rouvrir':'✅ Terminer'}</button>` : ''}
-    </div>`;
-
-  return `
-  <div class="score-card status-${st}">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <div style="flex:1;display:flex;align-items:center;gap:5px">
-        ${ev ? `<span style="font-size:14px">${ev.icon}</span><span style="font-size:12px;font-weight:600;color:var(--blue)">${esc(ev.name)}</span>` : ''}
-        <span class="badge" style="background:var(--green-light);color:var(--green);font-size:9px">👥 ${teamIds.length} équipes</span>
-        ${m.terrain ? `<span class="badge" style="background:var(--blue-light);color:var(--blue);font-size:9px">📍${esc(m.terrain)}</span>` : ''}
-        ${m.slot    ? `<span class="badge" style="background:#F3E5F5;color:#6A1B9A;font-size:9px">⏰${m.slot}</span>` : ''}
-      </div>
-      <span class="status-pill ${st}" style="cursor:default">${st==='pending'?'⏳ En attente':st==='ongoing'?'▶️ En cours':'✅ Terminé'}</span>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:7px;margin-bottom:10px">
-      ${teamIds.map(tid => {
-        const t = getTeam(tid);
-        const sc = scores[tid] ?? '';
-        const isW = winnerIds.includes(tid);
-        return `<div style="background:${t.color}15;border:1.5px solid ${isW?t.color:t.color+'44'};border-radius:var(--r);padding:8px 10px">
-          <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">
-            <span class="dot" style="background:${t.color}"></span>
-            <span style="font-size:11px;font-weight:600;color:${isW?t.color:'var(--text)'}">${esc(t.name)}${isW?' 🏆':''}</span>
-          </div>
-          <input type="number" min="0" value="${sc}" placeholder="—"
-            ${st==='done'?'readonly ':''} style="width:100%;text-align:center;border:1.5px solid ${t.color}66;border-radius:7px;font-size:16px;font-weight:700;padding:4px;background:#fff;outline:none"
-            oninput="setMultiScore('${m.id}','${tid}',this.value)">
-        </div>`;
-      }).join('')}
-    </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-      ${statusBtns}
-      <button class="btn btn-ghost btn-sm" onclick="openArbitre('${m.id}')">⚖️ Vue arbitre</button>
-    </div>
-  </div>`;
-}
-
-function setScoreFromTab(matchId, side, val) {
-  const m = matches.find(m => m.id === matchId);
-  if (!m) return;
-  const v = val === '' ? null : parseFloat(val);
-  m['score'+side] = isNaN(v) ? null : v;
-  // Auto-set status to ongoing if both teams started scoring
-  if (m.scoreA !== null && m.scoreB !== null && (!m.status || m.status === 'pending')) {
-    m.status = 'ongoing';
-  }
-  persistState(); broadcastState();
-  // Refresh programme tab match list if visible
-  if (document.getElementById('tab-program').classList.contains('active')) renderMatches();
-}
-
-// ═══════════════════════════════════════════════════════
-//  RANKING — full version with highlights + categories
-// ═══════════════════════════════════════════════════════
-function renderRanking() {
-  const el = document.getElementById('ranking-content');
-  const played = matches.filter(m => {
-    if (m.format==='multi') return m.teams && m.teams.some(tid => m.scores && m.scores[tid] !== null && m.scores[tid] !== undefined);
-    return m.scoreA !== null && m.scoreB !== null;
-  });
-
-  if (!played.length) {
-    el.innerHTML = `<div class="empty-state"><div class="es-icon">🏆</div><p>Saisissez des scores dans l'onglet Scores pour voir le classement.</p></div>`;
-    return;
-  }
-
-  const sorted = computeStats();
-
-  // ── Podium ──
-  const pOrder = [1, 0, 2], barH = {0:100, 1:78, 2:60};
-  let html = `<div class="podium">${pOrder.filter(r => sorted[r]).map(r => {
-    const t = sorted[r];
-    return `<div class="podium-block">
-      <div style="font-size:${r===0?'26px':'20px'}">${MEDAL[r]}</div>
-      <div style="font-family:'Bebas Neue';font-size:${r===0?'14px':'12px'};color:#fff;text-align:center;max-width:96px">${esc(t.name)}</div>
-      <div style="font-size:10px;color:rgba(255,255,255,.5)">${t.wins}V · ${t.losses}D · ${t.draws}N</div>
-      <div class="podium-bar" style="background:${MEDAL_COLS[r]};height:${barH[r]}px">${r+1}</div>
-    </div>`;
-  }).join('')}</div>`;
-
-  // ── Highlight cards ──
-  const mostWins   = [...sorted].sort((a,b) => b.wins  - a.wins)[0];
-  const mostLoss   = [...sorted].sort((a,b) => b.losses - a.losses)[0];
-  const bestAvg    = [...sorted].sort((a,b) => b.avg   - a.avg)[0];
-  const mostBonus  = [...sorted].sort((a,b) => b.bonusTotal - a.bonusTotal)[0];
-  const mostDraws  = [...sorted].sort((a,b) => b.draws - a.draws)[0];
-  const mostGames  = [...sorted].sort((a,b) => b.scores.length - a.scores.length)[0];
-
-  html += `<div class="highlight-grid mb-16">
-    <div class="highlight-card">
-      <div class="highlight-icon">🥇</div>
-      <div><div class="highlight-label">Plus de victoires</div>
-        <div class="highlight-value" style="color:var(--orange)">${esc(mostWins.name)}</div>
-        <div class="highlight-sub">${mostWins.wins} victoire${mostWins.wins!==1?'s':''}</div></div>
-    </div>
-    <div class="highlight-card">
-      <div class="highlight-icon">😔</div>
-      <div><div class="highlight-label">Plus de défaites</div>
-        <div class="highlight-value" style="color:var(--red)">${esc(mostLoss.name)}</div>
-        <div class="highlight-sub">${mostLoss.losses} défaite${mostLoss.losses!==1?'s':''}</div></div>
-    </div>
-    <div class="highlight-card">
-      <div class="highlight-icon">📊</div>
-      <div><div class="highlight-label">Meilleure moyenne</div>
-        <div class="highlight-value" style="color:var(--green)">${esc(bestAvg.name)}</div>
-        <div class="highlight-sub">${bestAvg.avg.toFixed(1)} pts/match</div></div>
-    </div>
-    <div class="highlight-card">
-      <div class="highlight-icon">🤝</div>
-      <div><div class="highlight-label">Plus de nuls</div>
-        <div class="highlight-value" style="color:var(--muted)">${esc(mostDraws.name)}</div>
-        <div class="highlight-sub">${mostDraws.draws} nul${mostDraws.draws!==1?'s':''}</div></div>
-    </div>
-    <div class="highlight-card">
-      <div class="highlight-icon">⭐</div>
-      <div><div class="highlight-label">Plus de bonus</div>
-        <div class="highlight-value" style="color:var(--orange)">${esc(mostBonus.name)}</div>
-        <div class="highlight-sub">+${mostBonus.bonusTotal} pts</div></div>
-    </div>
-    <div class="highlight-card">
-      <div class="highlight-icon">🎮</div>
-      <div><div class="highlight-label">Plus actif</div>
-        <div class="highlight-value" style="color:var(--blue)">${esc(mostGames.name)}</div>
-        <div class="highlight-sub">${mostGames.scores.length} match${mostGames.scores.length!==1?'s':''}</div></div>
-    </div>
-  </div>`;
-
-  // ── Full ranking table ──
-  html += `<div class="card mb-16"><div style="overflow-x:auto"><table class="rank-table">
-    <thead><tr>
-      <th>#</th><th>Équipe</th><th>V</th><th>D</th><th>N</th>
-      <th>Pts sport</th><th>Bonus</th><th>Total</th><th>Moy/match</th><th>Joués</th>
-    </tr></thead>
-    <tbody>${sorted.map((t, i) => `<tr>
-      <td style="font-weight:700;color:${i<3?MEDAL_COLS[i]:'#999'};font-size:${i===0?'17px':'12px'}">${i<3?MEDAL[i]:i+1}</td>
-      <td><span class="dot" style="background:${t.color}"></span> <strong>${esc(t.name)}</strong></td>
-      <td style="color:var(--green);font-weight:700">${t.wins}</td>
-      <td style="color:var(--red);font-weight:700">${t.losses}</td>
-      <td style="color:var(--muted)">${t.draws}</td>
-      <td style="font-weight:700;color:var(--blue)">${t.pts}</td>
-      <td style="color:var(--orange);font-weight:700">${t.bonusTotal>0?'+'+t.bonusTotal:'—'}</td>
-      <td style="font-weight:700;color:var(--blue)">${t.totalWithBonus}</td>
-      <td style="color:var(--muted)">${t.avg.toFixed(1)}</td>
-      <td style="color:var(--muted)">${t.scores.length}</td>
-    </tr>`).join('')}</tbody>
-  </table></div></div>`;
-
-  // ── Performance par catégorie ──
-  const cats = Object.keys(CAT_LABELS);
-  const hasCatData = played.some(m => m.eventId && getEvent(m.eventId));
-  if (hasCatData) {
-    html += `<div class="card mb-16">
-      <h3 style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px;margin-bottom:11px">Performances par catégorie</h3>
-      <div style="overflow-x:auto"><table class="rank-table">
-        <thead><tr><th>Équipe</th>${cats.map(c => `<th>${CAT_LABELS[c]}</th>`).join('')}</tr></thead>
-        <tbody>${sorted.map(t => `<tr>
-          <td><span class="dot" style="background:${t.color}"></span> <strong>${esc(t.name)}</strong></td>
-          ${cats.map(c => {
-            const s = t.catStats[c] || {w:0, l:0};
-            const total = s.w + s.l;
-            if (!total) return '<td style="color:var(--muted);font-size:11px">—</td>';
-            const pct = Math.round(s.w/total*100);
-            return `<td style="font-size:11px">
-              <div style="display:flex;align-items:center;gap:4px">
-                <span style="color:var(--green);font-weight:700">${s.w}V</span>
-                <span style="color:var(--muted)">/</span>
-                <span style="color:var(--red)">${s.l}D</span>
-                <span style="font-size:9px;color:var(--muted)">(${pct}%)</span>
-              </div>
-            </td>`;
-          }).join('')}
-        </tr>`).join('')}
-        </tbody>
-      </table></div>
-    </div>`;
-  }
-
-  // ── Résultats par jeu ──
-  const eventsWithResults = [...new Set(played.filter(m => m.eventId).map(m => m.eventId))];
-  if (eventsWithResults.length) {
-    html += `<div class="card mb-16">
-      <h3 style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px;margin-bottom:11px">Résultats par épreuve</h3>`;
-
-    eventsWithResults.forEach(evId => {
-      const ev = getEvent(evId);
-      if (!ev) return;
-      const evMatches = played.filter(m => m.eventId === evId);
-      html += `<div style="margin-bottom:14px">
-        <div style="font-family:'Bebas Neue';font-size:14px;color:var(--blue);letter-spacing:.5px;margin-bottom:6px;display:flex;align-items:center;gap:6px">
-          ${ev.icon} ${esc(ev.name)}
-          <span class="badge ${CAT_BADGE[ev.cat]||'badge-prec'}" style="font-size:9px">${CAT_LABELS[ev.cat]}</span>
-        </div>`;
-      evMatches.forEach(m => {
-        if (m.format === 'multi') {
-          const teamIds = m.teams || [];
-          const scores  = m.scores || {};
-          const maxSc   = Math.max(...teamIds.map(tid => Number(scores[tid]||0)));
-          html += `<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--neutral);flex-wrap:wrap">
-            ${teamIds.map(tid => {
-              const t = getTeam(tid); const sc = scores[tid];
-              const isW = Number(sc) === maxSc;
-              return `<span style="font-size:11px;font-weight:${isW?700:400};color:${isW?t.color:'var(--text)'}">
-                <span class="dot" style="background:${t.color}"></span> ${esc(t.name)} : <strong>${sc??'—'}</strong>${isW?' 🏆':''}</span>`;
-            }).join('<span style="color:var(--muted);margin:0 4px">·</span>')}
-          </div>`;
-        } else {
-          const tA=getTeam(m.teamA), tB=getTeam(m.teamB);
-          const wA=m.scoreA>m.scoreB, wB=m.scoreB>m.scoreA;
-          html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--neutral);flex-wrap:wrap">
-            <span style="font-size:12px;font-weight:${wA?700:400};color:${wA?tA.color:'var(--text)'}"><span class="dot" style="background:${tA.color}"></span> ${esc(tA.name)}</span>
-            <span style="background:var(--neutral);border-radius:7px;padding:2px 9px;font-weight:700;font-size:13px">${m.scoreA} : ${m.scoreB}</span>
-            <span style="font-size:12px;font-weight:${wB?700:400};color:${wB?tB.color:'var(--text)'}">${esc(tB.name)} <span class="dot" style="background:${tB.color};margin-left:3px"></span></span>
-            ${wA||wB ? `<span style="background:var(--green-light);color:var(--green);font-size:10px;font-weight:700;padding:2px 8px;border-radius:7px">🏆 ${esc(wA?tA.name:tB.name)}</span>` : `<span style="background:var(--neutral);color:var(--muted);font-size:10px;padding:2px 8px;border-radius:7px">Égalité</span>`}
-          </div>`;
-        }
-      });
-      html += `</div>`;
-    });
-    html += `</div>`;
-  }
-
-  el.innerHTML = html;
-}
-
-// Override updateScoreboard to use status field
-function updateScoreboard() {
-  const rankEl = document.getElementById('sb-ranking-list');
-  const liveEl = document.getElementById('sb-live-matches');
-  if (!rankEl || !liveEl) return;
-
-  const played = matches.filter(m => {
-    if (m.format==='multi') return m.teams && m.teams.some(tid => m.scores && m.scores[tid] !== null);
-    return m.scoreA !== null && m.scoreB !== null;
-  });
-
-  if (!played.length) {
-    rankEl.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:12px">En attente de scores…</div>';
-  } else {
-    const sorted = computeStats();
-    rankEl.innerHTML = sorted.map((t, i) => `
-      <div class="sb-rank-row">
-        <div class="sb-rank-pos" style="color:${i<3?MEDAL_COLS[i]:'rgba(255,255,255,.3)'}">${i<3?MEDAL[i]:i+1}</div>
-        <div style="display:flex;align-items:center;gap:6px;flex:1">
-          <span class="dot" style="background:${t.color}"></span>
-          <div class="sb-rank-name">${esc(t.name)}</div>
-        </div>
-        <div class="sb-rank-stat">${t.totalWithBonus}</div>
-        <div class="sb-rank-wins">${t.wins}V</div>
-      </div>`).join('');
-  }
-
-  // "En cours" = status is 'ongoing' OR (no status but has scores)
-  const live = matches.filter(m =>
-    m.status === 'ongoing' ||
-    (!m.status && (m.scoreA !== null || m.scoreB !== null ||
-      (m.scores && Object.values(m.scores).some(v => v !== null))))
-  );
-
-  if (!live.length) {
-    liveEl.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:12px">Aucun match en cours…</div>';
-    return;
-  }
-
-  const isArb = arbCurrentMatch ? arbCurrentMatch.id : null;
-  liveEl.innerHTML = live.slice(-5).map(m => {
-    const ev = m.eventId ? getEvent(m.eventId) : null;
-    const timerTxt = (isArb === m.id) ? fmtTime(arbTimer.remaining) : '';
-    const timerCls = (isArb === m.id) ? (arbTimer.remaining<=60?'danger':arbTimer.running?'active':'') : '';
-
-    if (m.format === 'multi') {
-      const teamIds = m.teams || [];
-      return `<div class="sb-match-live">
-        <div class="sb-match-title">${ev?ev.icon+' '+esc(ev.name):'Multi-équipes'}${m.terrain?' · 📍'+esc(m.terrain):''}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
-          ${teamIds.map(tid => {
-            const t = getTeam(tid); const sc = m.scores ? m.scores[tid] : null;
-            return `<div style="text-align:center;background:rgba(255,255,255,.07);border-radius:8px;padding:6px 12px">
-              <div style="color:${t.color};font-size:11px;font-weight:700">${esc(t.name)}</div>
-              <div style="font-family:'Bebas Neue';font-size:28px;color:#fff">${sc??'—'}</div>
-            </div>`;
-          }).join('')}
-        </div>
-        ${timerTxt?`<div class="sb-timer ${timerCls}">${timerTxt}</div>`:''}
-      </div>`;
-    }
-    const tA = getTeam(m.teamA), tB = getTeam(m.teamB);
-    return `<div class="sb-match-live">
-      <div class="sb-match-title">${ev?ev.icon+' '+esc(ev.name):'Match'}${m.terrain?' · 📍'+esc(m.terrain):''}${m.slot?' · ⏰'+m.slot:''}</div>
-      <div class="sb-match-teams">
-        <div class="sb-team-name" style="color:${tA.color}">${esc(tA.name)}</div>
-        <div class="sb-score">${m.scoreA??'—'} : ${m.scoreB??'—'}</div>
-        <div class="sb-team-name" style="color:${tB.color}">${esc(tB.name)}</div>
-      </div>
-      ${timerTxt?`<div class="sb-timer ${timerCls}">${timerTxt}</div>`:''}
-    </div>`;
-  }).join('');
-}
-
-// Make renderAll also refresh scores tab if active
-function renderAll() {
-  _renderAllBase();
-  if (document.getElementById('tab-scores')?.classList.contains('active')) renderScoresTab();
-}
-
-// Init sync indicator
-updateSyncIndicator('wait', '⏳ Firebase en cours d\'initialisation…');
+setInterval(()=>{ if(document.getElementById('scoreboard-view')?.classList.contains('open')) updateScoreboard(); },3000);
 
 </script>
 </body>
