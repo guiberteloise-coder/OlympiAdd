@@ -1,0 +1,2800 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Olympiades — Organisateur</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, onSnapshot, setDoc, getDoc, updateDoc, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyByv7hyxyeboTI4ufk0FLm8xtl8I9Zq7Y4",
+  authDomain: "olympiades-580ec.firebaseapp.com",
+  projectId: "olympiades-580ec",
+  storageBucket: "olympiades-580ec.firebasestorage.app",
+  messagingSenderId: "181440924391",
+  appId: "1:181440924391:web:1a9a86ec702e7bf0017042"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// Expose to global scope for main script
+window._firebase = { db, doc, onSnapshot, setDoc, getDoc, updateDoc, serverTimestamp };
+window._firebaseReady = true;
+window.dispatchEvent(new Event('firebase-ready'));
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --orange:#E8590C;--orange-light:#FFF3EE;--orange-dark:#C24509;
+  --blue:#1E3A5F;--blue-light:#EAF3FB;--blue-dark:#162D4A;
+  --green:#2D9E5F;--green-light:#E8F5E9;
+  --red:#CC2200;--red-light:#FFEEED;
+  --gold:#FFD700;--silver:#C0C0C0;--bronze:#CD7F32;
+  --neutral:#F0EDE8;--bg:#FAFAF8;--white:#FFFFFF;
+  --text:#1A1A1A;--muted:#6B6B6B;--border:#E0DDD8;
+  --shadow:0 2px 12px rgba(0,0,0,.08);--shadow-lg:0 4px 24px rgba(0,0,0,.13);
+  --r:10px;--r-lg:14px;--r-xl:18px;
+}
+html{font-size:16px;scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
+input,select,textarea,button{font-family:inherit}
+
+/* HEADER */
+#app-header{background:var(--blue);color:#fff;padding:0 20px;display:flex;align-items:stretch;position:sticky;top:0;z-index:200;box-shadow:0 2px 16px rgba(0,0,0,.2);flex-wrap:wrap}
+.header-brand{display:flex;align-items:center;gap:10px;padding:12px 0;margin-right:20px}
+.header-flame{font-size:26px;animation:flicker 2.5s ease-in-out infinite}
+@keyframes flicker{0%,100%{transform:scaleY(1) rotate(-2deg)}50%{transform:scaleY(1.08) rotate(2deg)}}
+.header-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;line-height:1}
+.header-sub{font-size:9px;color:rgba(255,255,255,.5);letter-spacing:3px;margin-top:1px}
+.tab-nav{display:flex;align-items:flex-end;gap:1px;flex:1;overflow-x:auto}
+.tab-btn{font-size:12px;font-weight:600;background:transparent;border:none;color:rgba(255,255,255,.5);padding:11px 13px;cursor:pointer;border-bottom:3px solid transparent;transition:all .18s;white-space:nowrap}
+.tab-btn:hover{color:rgba(255,255,255,.85)}
+.tab-btn.active{color:#fff;border-bottom:3px solid var(--orange)}
+.header-actions{display:flex;align-items:center;gap:8px;padding:8px 0}
+.sync-badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.65);cursor:pointer;border:1px solid rgba(255,255,255,.2);transition:all .15s}
+.sync-badge:hover{background:rgba(255,255,255,.2)}
+.sync-badge.connected{background:rgba(45,158,95,.3);color:#7FFFC4;border-color:rgba(45,158,95,.5)}
+.sync-badge.syncing{background:rgba(232,89,12,.2);color:#FFB347;border-color:rgba(232,89,12,.4)}
+
+/* LAYOUT */
+.container{max-width:1060px;margin:0 auto;padding:22px 16px}
+.tab-pane{display:none}.tab-pane.active{display:block}
+.section-title{font-family:'Bebas Neue',sans-serif;font-size:25px;color:var(--blue);letter-spacing:1.5px;margin-bottom:3px}
+.section-sub{font-size:13px;color:var(--muted);margin-bottom:18px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:680px){.two-col{grid-template-columns:1fr}}
+
+/* CARDS */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;box-shadow:var(--shadow)}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(275px,1fr));gap:13px}
+.mb-8{margin-bottom:8px}.mb-12{margin-bottom:12px}.mb-16{margin-bottom:16px}.mb-20{margin-bottom:20px}
+.mt-8{margin-top:8px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}.mt-20{margin-top:20px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;padding:8px 15px;border-radius:var(--r);border:none;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--orange);color:#fff}.btn-primary:hover{background:var(--orange-dark)}
+.btn-secondary{background:var(--blue);color:#fff}.btn-secondary:hover{background:var(--blue-dark)}
+.btn-ghost{background:var(--neutral);color:var(--blue)}.btn-ghost:hover{background:#e4dfd8}
+.btn-danger{background:var(--red-light);color:var(--red)}.btn-danger:hover{background:#ffd5d2}
+.btn-success{background:var(--green);color:#fff}.btn-success:hover{background:#22834C}
+.btn-outline{background:transparent;border:1.5px solid var(--orange);color:var(--orange)}.btn-outline:hover{background:var(--orange);color:#fff}
+.btn-sm{padding:5px 10px;font-size:11px;border-radius:8px}
+.btn-icon{padding:6px;aspect-ratio:1;border-radius:8px}
+.w-full{width:100%}
+
+/* FORMS */
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:11px}
+.field label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.input,.select,.textarea{font-size:13px;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--r);background:#fff;color:var(--text);outline:none;transition:border-color .15s;width:100%}
+.input:focus,.select:focus,.textarea:focus{border-color:var(--orange)}
+.textarea{resize:vertical;min-height:68px}
+.inline-fields{display:flex;gap:9px;align-items:flex-end}
+.inline-fields .field{flex:1;margin:0}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px}
+.badge-prec{background:#FFF3E0;color:#E65100}
+.badge-hab{background:#E3F2FD;color:#0D47A1}
+.badge-cg{background:#F3E5F5;color:#6A1B9A}
+.badge-ref{background:#E8F5E9;color:#1B5E20}
+.badge-eq{background:#FFF8E1;color:#F57F17}
+.badge-ext{background:#E8F5E9;color:#2E7D32}
+.badge-int{background:#E3F2FD;color:#1565C0}
+.badge-both{background:#FFF8E1;color:#F57F17}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0;vertical-align:middle}
+
+/* TEAM CARDS */
+.team-avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#fff;flex-shrink:0}
+.player-chips{display:flex;flex-wrap:wrap;gap:5px;min-height:26px;margin-bottom:9px}
+.player-chip{background:var(--neutral);border-radius:20px;padding:3px 9px;font-size:11px;display:flex;align-items:center;gap:4px}
+.chip-del{background:none;border:none;color:#999;cursor:pointer;font-size:11px;font-weight:700;line-height:1;padding:0}
+.chip-del:hover{color:var(--red)}
+
+/* RECO BOX */
+.reco-box{background:linear-gradient(135deg,#EAF3FB,#F0F8E8);border:1.5px solid #B3D9F7;border-radius:var(--r-lg);padding:14px 18px;margin-bottom:18px}
+.reco-box h3{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--blue);letter-spacing:1px;margin-bottom:9px}
+.reco-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px}
+.reco-item{background:#fff;border-radius:var(--r);padding:9px 11px;border:1px solid #D5EAF9}
+.reco-item .rl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:2px}
+.reco-item .rv{font-family:'Bebas Neue',sans-serif;font-size:19px;color:var(--blue);letter-spacing:1px}
+.reco-item .rh{font-size:11px;color:var(--muted);margin-top:1px}
+
+/* FORMAT CARDS */
+.format-cards{display:flex;gap:11px;flex-wrap:wrap;margin-bottom:14px}
+.format-card{flex:1;min-width:150px;background:#fff;border:2px solid var(--border);border-radius:var(--r-lg);padding:14px;cursor:pointer;transition:all .15s}
+.format-card:hover{border-color:#aac}
+.format-card.selected{border-color:var(--orange);background:var(--orange-light)}
+.format-card h4{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--blue);letter-spacing:1px;margin-bottom:4px}
+.format-card p{font-size:11px;color:var(--muted);line-height:1.5}
+
+/* MATCH CARDS */
+.match-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:var(--shadow);margin-bottom:9px;transition:box-shadow .15s}
+.match-card:hover{box-shadow:var(--shadow-lg)}
+.match-num{width:24px;height:24px;border-radius:50%;background:var(--neutral);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--muted);flex-shrink:0}
+.match-num.done{background:var(--green-light);color:var(--green)}
+.score-wrap{display:flex;align-items:center;gap:5px;background:var(--neutral);border-radius:var(--r);padding:5px 9px}
+.score-input{width:46px;text-align:center;border:none;background:transparent;font-size:19px;font-weight:700;color:var(--text);font-family:'Bebas Neue',sans-serif;letter-spacing:1px;outline:none}
+.score-sep{font-weight:700;color:var(--muted);font-size:14px}
+.match-winner{font-size:11px;font-weight:700;color:var(--green);background:var(--green-light);border-radius:8px;padding:3px 8px;display:none}
+/* Championship group header */
+.champ-group-header{background:var(--blue);color:#fff;border-radius:var(--r);padding:8px 14px;margin:16px 0 8px;display:flex;align-items:center;gap:8px;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px}
+
+/* PLANNING GRID */
+.planning-grid{overflow-x:auto;margin-top:14px}
+.planning-table{border-collapse:collapse;min-width:100%;font-size:11px}
+.planning-table th{background:var(--blue);color:#fff;padding:9px 11px;text-align:center;white-space:nowrap;font-weight:600;font-size:10px;letter-spacing:.5px}
+.planning-table td{border:1px solid var(--border);padding:0;vertical-align:top;min-width:130px;height:56px}
+.planning-table td.time-cell{background:var(--neutral);font-weight:700;font-size:10px;color:var(--muted);text-align:center;min-width:55px;white-space:nowrap;padding:8px 4px}
+.slot-match{border-radius:5px;padding:4px 6px;margin:2px;font-size:10px;line-height:1.3}
+.slot-conflict{outline:2px solid var(--red)!important}
+
+/* EVENTS */
+.events-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:11px}
+.event-card{background:#fff;border:2px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:all .15s;position:relative}
+.event-card:hover{box-shadow:var(--shadow-lg)}
+.event-card.selected{border-color:var(--orange);background:var(--orange-light)}
+.event-card.incompatible{opacity:.45;cursor:not-allowed;filter:grayscale(.5)}
+.event-card.incompatible:hover{box-shadow:var(--shadow)}
+.event-teams-badge{position:absolute;top:8px;right:8px;background:var(--blue);color:#fff;border-radius:20px;font-size:9px;font-weight:700;padding:2px 7px;letter-spacing:.3px}
+.event-teams-badge.multi{background:var(--green)}
+.event-header{padding:11px 13px;display:flex;align-items:flex-start;gap:9px}
+.event-icon{font-size:24px;flex-shrink:0;margin-top:1px}
+.event-title{font-weight:700;font-size:13px;color:var(--blue)}
+.event-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.event-body{padding:0 13px 10px;font-size:11px;color:var(--muted);line-height:1.5}
+.event-footer{padding:0 13px 11px;display:flex;gap:5px}
+
+/* RANKING */
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;padding:18px 14px;background:linear-gradient(135deg,var(--blue),#2D5A8E);border-radius:var(--r-xl);margin-bottom:18px}
+.podium-block{display:flex;flex-direction:column;align-items:center;gap:5px}
+.podium-bar{width:76px;border-radius:5px 5px 0 0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff}
+.rank-table{width:100%;border-collapse:collapse;font-size:12px}
+.rank-table th{background:var(--blue);color:#fff;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:8px 11px;text-align:left}
+.rank-table td{padding:9px 11px;border-bottom:1px solid var(--neutral);vertical-align:middle}
+.rank-table tr:nth-child(even) td{background:#FAFAF8}
+.rank-table tr:hover td{background:#F5F2EE}
+
+/* BONUS */
+.bonus-pts-input{width:56px;font-size:12px;font-weight:700;text-align:center;padding:4px 7px;border:1.5px solid var(--border);border-radius:8px;outline:none}
+.bonus-pts-input:focus{border-color:var(--orange)}
+
+/* SYNC PANEL */
+.sync-panel{background:linear-gradient(135deg,#1E3A5F,#2A5298);color:#fff;border-radius:var(--r-xl);padding:18px 22px;margin-bottom:18px}
+.sync-panel h3{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;margin-bottom:3px}
+.sync-panel p{font-size:12px;color:rgba(255,255,255,.65);margin-bottom:14px}
+.code-display{font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:8px;text-align:center;background:rgba(255,255,255,.1);border-radius:var(--r-lg);padding:14px;margin:14px 0;border:2px dashed rgba(255,255,255,.25)}
+.device-list{display:flex;flex-wrap:wrap;gap:7px}
+.device-chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:3px 10px;font-size:11px;color:#fff}
+.device-chip.self{background:rgba(45,158,95,.3);border-color:rgba(45,158,95,.5)}
+.firebase-status{display:flex;align-items:center;gap:7px;font-size:11px;padding:7px 12px;border-radius:var(--r);margin-bottom:10px}
+.firebase-status.ok{background:rgba(45,158,95,.2);color:#7FFFC4;border:1px solid rgba(45,158,95,.3)}
+.firebase-status.err{background:rgba(204,34,0,.2);color:#FFB3AD;border:1px solid rgba(204,34,0,.3)}
+.firebase-status.wait{background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.15)}
+
+/* ARBITRE VIEW */
+#arbitre-view{display:none;position:fixed;inset:0;background:#0D1B2A;z-index:1000;flex-direction:column;overflow-y:auto}
+#arbitre-view.open{display:flex}
+.arb-header{background:#162D4A;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.arb-title{font-family:'Bebas Neue',sans-serif;font-size:18px;color:#fff;letter-spacing:1.5px}
+.arb-body{flex:1;display:flex;flex-direction:column;padding:13px;gap:11px}
+.arb-block{background:#162D4A;border-radius:var(--r-lg);padding:14px}
+.arb-block-label{font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.5px;font-weight:700;display:block;margin-bottom:7px}
+.arb-block select{background:#1E3A5F;color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:var(--r);padding:9px 11px;width:100%;font-size:13px;font-weight:600;cursor:pointer}
+.arb-timer-display{font-family:'Bebas Neue',sans-serif;font-size:68px;letter-spacing:6px;color:#fff;line-height:1;text-align:center;margin:8px 0}
+.arb-timer-display.warning{color:#FFB347}
+.arb-timer-display.danger{color:#FF4444;animation:pulse .7s infinite}
+.arb-timer-display.finished{color:#FF4444}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.arb-timer-controls{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.arb-timer-btn{background:#1E3A5F;border:none;color:#fff;border-radius:var(--r);padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s}
+.arb-timer-btn.start{background:var(--green)}.arb-timer-btn.pause{background:var(--orange)}.arb-timer-btn.reset{background:#444}
+.arb-score-row{display:flex;align-items:center;gap:8px}
+.arb-score-controls{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1}
+.arb-score-val{font-family:'Bebas Neue',sans-serif;font-size:56px;color:#fff;line-height:1;text-align:center;min-width:76px}
+.arb-score-btn{background:#1E3A5F;border:none;color:#fff;border-radius:var(--r);width:54px;height:34px;font-size:20px;font-weight:700;cursor:pointer;transition:background .15s}
+.arb-score-btn.plus{background:var(--green)}.arb-score-btn.plus:hover{background:#22834C}
+.arb-score-btn.minus{background:#333}.arb-score-btn.minus:hover{background:#555}
+.arb-save-btn{background:var(--orange);border:none;color:#fff;border-radius:var(--r);padding:13px;font-size:14px;font-weight:700;cursor:pointer;width:100%;margin-top:6px}
+.arb-save-btn:hover{background:var(--orange-dark)}
+.arb-team-lbl{color:rgba(255,255,255,.55);font-size:11px;text-align:center;margin-top:3px}
+
+/* SCOREBOARD */
+#scoreboard-view{display:none;position:fixed;inset:0;background:#0A1628;z-index:1000;flex-direction:column;overflow:hidden}
+#scoreboard-view.open{display:flex}
+.sb-header{background:#0D1B2A;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid rgba(232,89,12,.35);flex-shrink:0}
+.sb-title{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#fff;letter-spacing:3px}
+.sb-close{background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:var(--r);padding:6px 13px;font-size:11px;font-weight:600;cursor:pointer}
+.sb-close:hover{background:rgba(255,255,255,.18)}
+.sb-body{flex:1;display:grid;grid-template-columns:1fr 2fr;overflow:hidden}
+.sb-ranking{background:#0D1B2A;padding:18px;overflow-y:auto;border-right:1px solid rgba(255,255,255,.07)}
+.sb-ranking h3,.sb-live h3{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--orange);letter-spacing:2px;margin-bottom:12px}
+.sb-rank-row{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:var(--r);margin-bottom:5px;background:rgba(255,255,255,.04)}
+.sb-rank-pos{font-family:'Bebas Neue',sans-serif;font-size:20px;width:28px;text-align:center;flex-shrink:0}
+.sb-rank-name{color:#fff;font-weight:600;font-size:14px;flex:1}
+.sb-rank-stat{font-family:'Bebas Neue',sans-serif;font-size:16px;color:rgba(255,255,255,.45)}
+.sb-rank-wins{font-size:11px;color:rgba(255,255,255,.35);margin-left:3px}
+.sb-live{flex:1;padding:18px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+.sb-match-live{background:rgba(255,255,255,.05);border-radius:var(--r-lg);padding:14px 18px;border:1px solid rgba(255,255,255,.07)}
+.sb-match-title{font-size:11px;color:rgba(255,255,255,.35);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:9px}
+.sb-match-teams{display:flex;align-items:center;gap:10px;justify-content:center}
+.sb-team-name{color:#fff;font-size:17px;font-weight:700;flex:1;text-align:center}
+.sb-score{font-family:'Bebas Neue',sans-serif;font-size:44px;color:#fff;letter-spacing:4px;background:rgba(232,89,12,.13);border-radius:var(--r);padding:3px 18px;border:1px solid rgba(232,89,12,.25)}
+.sb-timer{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;text-align:center;margin-top:7px;color:rgba(255,255,255,.4)}
+.sb-timer.active{color:var(--orange)}.sb-timer.danger{color:#FF4444;animation:pulse .7s infinite}
+
+/* DATA */
+.data-panel{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:11px;margin-bottom:18px}
+.data-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:14px;text-align:center}
+.data-card-icon{font-size:26px;margin-bottom:7px}
+.data-card-title{font-size:13px;font-weight:600;color:var(--blue);margin-bottom:3px}
+.data-card-sub{font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.4}
+
+/* INFO BOXES */
+.info-box{background:#EAF3FB;border:1px solid #B3D9F7;border-radius:var(--r);padding:10px 13px;font-size:12px;color:var(--blue);margin-bottom:12px}
+.warn-box{background:#FFF8E1;border:1px solid #FFD54F;border-radius:var(--r);padding:10px 13px;font-size:12px;color:#7B5800;margin-bottom:12px}
+.success-box{background:var(--green-light);border:1px solid #A5D6A7;border-radius:var(--r);padding:10px 13px;font-size:12px;color:#1B5E20;margin-bottom:12px}
+.conflict-box{background:var(--red-light);border:1px solid #FFCDD2;border-radius:var(--r);padding:10px 13px;font-size:12px;color:var(--red);margin-bottom:12px}
+
+/* TOAST */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--blue);color:#fff;padding:10px 18px;border-radius:var(--r);font-size:12px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.2);transform:translateY(80px);opacity:0;transition:all .3s;z-index:9999;max-width:300px;pointer-events:none}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:var(--green)}.toast.error{background:var(--red)}.toast.warning{background:#E67E22}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:14px}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:var(--r-xl);padding:22px;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.modal-title{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--blue);letter-spacing:1px;margin-bottom:14px}
+.modal-actions{display:flex;gap:7px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+
+/* UTILS */
+.flex{display:flex}.gap-4{gap:4px}.gap-6{gap:6px}.gap-8{gap:8px}.gap-12{gap:12px}.gap-16{gap:16px}
+.items-center{align-items:center}.justify-between{justify-content:space-between}.justify-center{justify-content:center}.wrap{flex-wrap:wrap}
+.text-muted{color:var(--muted)}.text-sm{font-size:12px}.text-xs{font-size:10px}.text-center{text-align:center}
+.font-bold{font-weight:700}
+.empty-state{text-align:center;padding:44px 20px;color:var(--muted)}
+.empty-state .es-icon{font-size:40px;margin-bottom:9px}
+.empty-state p{font-size:13px;line-height:1.6}
+hr.divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+
+
+/* SCORES TAB */
+.score-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:9px;box-shadow:var(--shadow);transition:box-shadow .15s}
+.score-card:hover{box-shadow:var(--shadow-lg)}
+.score-card.status-ongoing{border-left:4px solid var(--orange)}
+.score-card.status-done{border-left:4px solid var(--green)}
+.score-card.status-pending{border-left:4px solid var(--border)}
+.status-pill{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;cursor:pointer;border:none;transition:all .15s}
+.status-pill.pending{background:var(--neutral);color:var(--muted)}
+.status-pill.ongoing{background:#FFF3EE;color:var(--orange)}
+.status-pill.done{background:var(--green-light);color:var(--green)}
+/* SYNC INDICATOR */
+.sync-indicator-ok{background:var(--green-light);border-color:#A5D6A7;color:#1B5E20}
+.sync-indicator-err{background:var(--red-light);border-color:#FFCDD2;color:var(--red)}
+.sync-indicator-wait{background:#EAF3FB;border-color:#B3D9F7;color:var(--blue)}
+.sync-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sync-dot.ok{background:var(--green);animation:syncpulse 2s ease-in-out infinite}
+.sync-dot.err{background:var(--red)}
+.sync-dot.wait{background:var(--orange);animation:syncpulse 1s ease-in-out infinite}
+@keyframes syncpulse{0%,100%{opacity:1}50%{opacity:.4}}
+/* RANKING HIGHLIGHTS */
+.highlight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:18px}
+.highlight-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:13px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow)}
+.highlight-icon{font-size:24px;flex-shrink:0}
+.highlight-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.highlight-value{font-family:'Bebas Neue',sans-serif;font-size:17px;color:var(--blue);letter-spacing:.5px;line-height:1.1}
+.highlight-sub{font-size:10px;color:var(--muted)}
+
+
+/* PER-GAME RANKING */
+.game-rank-section{margin-bottom:20px}
+.game-rank-header{background:var(--blue);color:#fff;border-radius:var(--r);padding:9px 14px;margin-bottom:8px;display:flex;align-items:center;gap:8px;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px}
+.game-rank-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px}
+.game-rank-table th{background:rgba(30,58,95,.08);color:var(--blue);font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:7px 11px;text-align:left;border-bottom:2px solid var(--border)}
+.game-rank-table td{padding:8px 11px;border-bottom:1px solid var(--neutral);vertical-align:middle}
+.game-rank-table tr:hover td{background:#F5F2EE}
+/* MULTI ARBITRE */
+.arb-multi-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.arb-multi-row:last-child{border-bottom:none}
+.arb-multi-name{color:#fff;font-size:13px;font-weight:600;flex:1;min-width:80px}
+.arb-multi-score{font-family:'Bebas Neue',sans-serif;font-size:42px;color:#fff;min-width:60px;text-align:center;line-height:1}
+.arb-multi-btn{background:#1E3A5F;border:none;color:#fff;border-radius:8px;width:44px;height:32px;font-size:18px;font-weight:700;cursor:pointer;transition:background .15s}
+.arb-multi-btn.plus{background:var(--green)}.arb-multi-btn.plus:hover{background:#22834C}
+.arb-multi-btn.minus{background:#333}.arb-multi-btn.minus:hover{background:#555}
+
+@media print{
+  #app-header,#arbitre-view,#scoreboard-view,.btn,.tab-nav,.header-actions,.modal-overlay,.toast{display:none!important}
+  body{background:#fff}.container{padding:0;max-width:100%}
+  .tab-pane{display:block!important}.card{box-shadow:none;border:1px solid #ddd;break-inside:avoid}
+  .match-card{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="app-header">
+  <div class="header-brand">
+    <div class="header-flame">🔥</div>
+    <div><div class="header-title">Olympiades</div><div class="header-sub">Organisateur de jeux</div></div>
+  </div>
+  <nav class="tab-nav">
+    <button class="tab-btn active"  onclick="showTab('teams')">👥 Équipes</button>
+    <button class="tab-btn"         onclick="showTab('program')">📋 Programme</button>
+    <button class="tab-btn"         onclick="showTab('scores')">🎯 Scores</button>
+    <button class="tab-btn"         onclick="showTab('ranking')">🏆 Classement</button>
+    <button class="tab-btn"         onclick="showTab('bonus')">⭐ Bonus</button>
+    <button class="tab-btn"         onclick="showTab('data')">💾 Données</button>
+    <button class="tab-btn"         onclick="showTab('multiscreen')">📡 Multi-écrans</button>
+  </nav>
+  <div class="header-actions">
+    <span id="sync-status-badge" class="sync-badge" onclick="showTab('multiscreen')">📡 Hors-ligne</span>
+  </div>
+</div>
+
+<!-- VUE ARBITRE -->
+<div id="arbitre-view">
+  <div class="arb-header">
+    <div class="arb-title">⚖️ VUE ARBITRE</div>
+    <button class="btn btn-sm" style="background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2)" onclick="closeArbitre()">✕ Fermer</button>
+  </div>
+  <div class="arb-body">
+    <div class="arb-block">
+      <span class="arb-block-label">Match en cours</span>
+      <select id="arb-match-select" onchange="arbitreSelectMatch(this.value)"><option value="">— Choisir un match —</option></select>
+    </div>
+    <div class="arb-block">
+      <span class="arb-block-label">Minuteur</span>
+      <div class="arb-timer-display" id="arb-timer-display">15:00</div>
+      <div class="arb-timer-controls">
+        <button class="arb-timer-btn start" id="arb-start-btn" onclick="arbTimerStart()">▶ Démarrer</button>
+        <button class="arb-timer-btn pause" onclick="arbTimerPause()">⏸ Pause</button>
+        <button class="arb-timer-btn reset" onclick="arbTimerReset()">↺ Reset</button>
+      </div>
+      <div class="flex items-center gap-8 justify-center mt-8">
+        <span class="text-xs" style="color:rgba(255,255,255,.4)">Durée (min)</span>
+        <input type="number" id="arb-duration-input" value="15" min="1" max="60" onchange="arbSetDuration(this.value)"
+          style="background:#1E3A5F;border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:4px 8px;width:60px;text-align:center;font-size:13px">
+      </div>
+    </div>
+    <div class="arb-block" id="arb-score-block"><span class="arb-block-label">Scores</span><div style="color:rgba(255,255,255,.4);font-size:13px;padding:10px 0">Sélectionnez un match pour commencer.</div></div>
+  </div>
+</div>
+
+<!-- TABLEAU D'AFFICHAGE -->
+<div id="scoreboard-view">
+  <div class="sb-header">
+    <div class="flex items-center gap-12">
+      <span style="font-size:24px;animation:flicker 2s infinite">🔥</span>
+      <div class="sb-title">OLYMPIADES — TABLEAU D'AFFICHAGE</div>
+    </div>
+    <button class="sb-close" onclick="closeScoreboard()">✕ Fermer</button>
+  </div>
+  <div class="sb-body">
+    <div class="sb-ranking"><h3>🏆 CLASSEMENT</h3><div id="sb-ranking-list"></div></div>
+    <div class="sb-live"><h3>⚡ MATCHS EN COURS</h3><div id="sb-live-matches"></div></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ONGLET ÉQUIPES -->
+  <div id="tab-teams" class="tab-pane active">
+    <div class="flex justify-between items-center mb-16">
+      <div>
+        <h1 class="section-title">Équipes</h1>
+        <p class="section-sub" id="teams-sub">Créez vos équipes et ajoutez les joueurs</p>
+      </div>
+      <button class="btn btn-primary" onclick="openModal('team-modal')">+ Nouvelle équipe</button>
+    </div>
+    <div id="reco-box" class="reco-box" style="display:none">
+      <h3>💡 Recommandations</h3>
+      <div class="reco-grid" id="reco-grid"></div>
+    </div>
+    <div class="card-grid" id="teams-grid">
+      <div class="empty-state" style="grid-column:1/-1"><div class="es-icon">👥</div><p>Aucune équipe créée.</p></div>
+    </div>
+  </div>
+
+  <!-- ONGLET PROGRAMME -->
+  <div id="tab-program" class="tab-pane">
+    <h1 class="section-title">Programme</h1>
+    <p class="section-sub">Tournoi, terrains, épreuves et matchs</p>
+
+    <!-- Terrains -->
+    <div class="card mb-16">
+      <div class="flex justify-between items-center mb-12">
+        <h3 style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px">0 — Terrains</h3>
+        <button class="btn btn-ghost btn-sm" onclick="addTerrain()">+ Terrain</button>
+      </div>
+      <div id="terrains-list" class="flex gap-8 wrap"></div>
+      <p class="text-xs text-muted mt-8">Organisez les matchs en parallèle et évitez les conflits de planning.</p>
+    </div>
+
+    <!-- Format -->
+    <div class="card mb-16">
+      <h3 style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px;margin-bottom:11px">1 — Format du tournoi</h3>
+      <div class="format-cards">
+        <div class="format-card selected" id="fmt-robin" onclick="selectFormat('robin')"><h4>Round-Robin</h4><p>Chaque équipe affronte toutes les autres une fois. Matchs générés automatiquement.</p></div>
+        <div class="format-card" id="fmt-manual" onclick="selectFormat('manual')"><h4>Manuel</h4><p>Créez vos matchs librement, sans contrainte de format.</p></div>
+        <div class="format-card" id="fmt-championship" onclick="selectFormat('championship')"><h4>🏆 Championnat</h4><p>Chaque équipe rencontre toutes les autres pour chaque jeu sélectionné. Sélectionnez les épreuves dans la bibliothèque avant de générer.</p></div>
+      </div>
+      <div id="robin-info" class="info-box" style="display:none"></div>
+      <div class="flex gap-8 wrap">
+        <button class="btn btn-secondary" id="btn-generate" onclick="tournamentFormat==='championship'?generateChampionship():generateMatches()">⚡ Générer les matchs</button>
+        <button class="btn btn-ghost" onclick="openModal('match-modal')">+ Match manuel</button>
+        <button class="btn btn-ghost" onclick="clearMatches()">🗑 Vider</button>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick="openScoreboard()">📺 Tableau</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Épreuves -->
+    <div class="card mb-16">
+      <div class="flex justify-between items-center mb-12">
+        <h3 style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px">2 — Épreuves</h3>
+        <div class="flex gap-6">
+          <button class="btn btn-ghost btn-sm" onclick="randomAssign()">🎲 Aléatoire</button>
+          <button class="btn btn-ghost btn-sm" onclick="openModal('custom-event-modal')">+ Personnalisée</button>
+        </div>
+      </div>
+      <div id="events-needed-info" class="warn-box" style="display:none"></div>
+      <div class="events-grid" id="events-library"></div>
+    </div>
+
+    <!-- Grille planning -->
+    <div class="card mb-16">
+      <div class="flex justify-between items-center mb-12">
+        <h3 style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px">3 — Grille Planning</h3>
+        <div class="flex gap-6">
+          <button class="btn btn-ghost btn-sm" onclick="renderPlanningGrid()">↻ Actualiser</button>
+          <button class="btn btn-ghost btn-sm" onclick="autoSchedule()">🤖 Auto-planifier</button>
+        </div>
+      </div>
+      <div class="inline-fields mb-12">
+        <div class="field"><label>Heure de début</label><input class="input" type="time" id="start-time" value="09:00"></div>
+        <div class="field"><label>Durée/match (min)</label><input class="input" type="number" id="slot-duration" value="20" min="5" max="60"></div>
+        <div class="field"><label>Pause (min)</label><input class="input" type="number" id="slot-pause" value="5" min="0" max="30"></div>
+      </div>
+      <div id="conflicts-box" class="conflict-box" style="display:none"></div>
+      <div id="planning-grid" class="planning-grid"></div>
+    </div>
+
+    <!-- Matchs -->
+    <div class="card">
+      <div class="flex justify-between items-center mb-16">
+        <h3 style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px">4 — Matchs <span id="matches-count" style="color:var(--muted);font-size:12px;font-family:Inter;font-weight:400"></span></h3>
+        <div class="flex gap-6 wrap">
+          <button class="btn btn-ghost btn-sm" onclick="downloadPlanningPDF()">📄 PDF Planning</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadTeamSheetsPDF()">📋 Fiches équipes</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadRulesAllPDF()">📖 Toutes les règles</button>
+          <button class="btn btn-ghost btn-sm" onclick="printPlanning()">🖨 Imprimer</button>
+        </div>
+      </div>
+      <div id="matches-list"><div class="empty-state"><div class="es-icon">📋</div><p>Aucun match planifié.</p></div></div>
+    </div>
+  </div>
+
+
+  <!-- ONGLET SCORES -->
+  <div id="tab-scores" class="tab-pane">
+    <div class="flex justify-between items-center mb-16">
+      <div>
+        <h1 class="section-title">Scores</h1>
+        <p class="section-sub" id="scores-sub">Saisie rapide des scores et gestion du statut des matchs</p>
+      </div>
+      <div class="flex gap-8">
+        <button class="btn btn-ghost btn-sm" onclick="openArbitre()">⚖️ Vue Arbitre</button>
+        <button class="btn btn-ghost btn-sm" onclick="openScoreboard()">📺 Tableau</button>
+      </div>
+    </div>
+    <!-- Sync indicator -->
+    <div id="sync-indicator" class="info-box" style="display:flex;align-items:center;gap:8px;justify-content:space-between">
+      <span id="sync-indicator-text">⏳ Firebase en cours d'initialisation…</span>
+      <span id="sync-last-update" style="font-size:10px;color:var(--muted)"></span>
+    </div>
+    <!-- Filter bar -->
+    <div class="card mb-12">
+      <div class="flex gap-8 wrap items-center">
+        <span style="font-size:12px;font-weight:600;color:var(--muted)">Filtrer :</span>
+        <button class="btn btn-sm btn-primary" id="sf-all"     onclick="setScoreFilter('all')">Tous</button>
+        <button class="btn btn-sm btn-ghost"   id="sf-pending" onclick="setScoreFilter('pending')">⏳ En attente</button>
+        <button class="btn btn-sm btn-ghost"   id="sf-ongoing" onclick="setScoreFilter('ongoing')">▶️ En cours</button>
+        <button class="btn btn-sm btn-ghost"   id="sf-done"    onclick="setScoreFilter('done')">✅ Terminés</button>
+        <span id="scores-filter-count" style="font-size:11px;color:var(--muted);margin-left:auto"></span>
+      </div>
+    </div>
+    <div id="scores-list"></div>
+  </div>
+
+  <!-- ONGLET CLASSEMENT -->
+  <div id="tab-ranking" class="tab-pane">
+    <div class="flex justify-between items-center mb-16">
+      <div><h1 class="section-title">Classement</h1><p class="section-sub">Résultats en temps réel</p></div>
+      <div class="flex gap-8">
+        <button class="btn btn-ghost btn-sm" onclick="openScoreboard()">📺 Grand écran</button>
+        <button class="btn btn-ghost btn-sm" onclick="downloadRankingPDF()">📄 Classement PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="downloadScoresPDF()">📄 Scores PDF</button>
+      </div>
+    </div>
+    <div id="ranking-content"><div class="empty-state"><div class="es-icon">🏆</div><p>Saisissez des scores dans le Programme.</p></div></div>
+  </div>
+
+  <!-- ONGLET BONUS -->
+  <div id="tab-bonus" class="tab-pane">
+    <div class="flex justify-between items-center mb-16">
+      <div><h1 class="section-title">Points Bonus</h1><p class="section-sub">Attribuez des points spéciaux par catégorie</p></div>
+      <button class="btn btn-ghost btn-sm" onclick="openModal('bonus-cat-modal')">⚙️ Catégories</button>
+    </div>
+    <div class="card mb-12"><div id="bonus-table"></div></div>
+    <div class="info-box">Les points bonus s'ajoutent aux points sportifs dans le classement général (colonne dédiée).</div>
+  </div>
+
+  <!-- ONGLET DONNÉES -->
+  <div id="tab-data" class="tab-pane">
+    <h1 class="section-title">Données</h1>
+    <p class="section-sub">Sauvegarde, export et import de votre olympiade</p>
+    <div id="autosave-status" class="success-box" style="display:none"></div>
+    <div class="data-panel">
+      <div class="data-card"><div class="data-card-icon">💾</div><div class="data-card-title">Sauvegarde auto</div><div class="data-card-sub">Données sauvegardées automatiquement dans le navigateur à chaque modification.</div><button class="btn btn-ghost btn-sm w-full" onclick="saveToLocalStorage(true)">Sauvegarder maintenant</button></div>
+      <div class="data-card"><div class="data-card-icon">📤</div><div class="data-card-title">Exporter JSON</div><div class="data-card-sub">Téléchargez une copie complète pour sauvegarder ou transférer.</div><button class="btn btn-secondary btn-sm w-full" onclick="exportJSON()">Télécharger le JSON</button></div>
+      <div class="data-card"><div class="data-card-icon">📥</div><div class="data-card-title">Importer JSON</div><div class="data-card-sub">Restaurez un état précédemment exporté. Les données actuelles seront remplacées.</div><input type="file" id="import-file" accept=".json" onchange="importJSON(event)" style="display:none"><button class="btn btn-ghost btn-sm w-full" onclick="document.getElementById('import-file').click()">Choisir un fichier JSON</button></div>
+      <div class="data-card"><div class="data-card-icon">🗑️</div><div class="data-card-title">Réinitialiser</div><div class="data-card-sub">Effacer toutes les données. Action irréversible.</div><button class="btn btn-danger btn-sm w-full" onclick="resetAll()">Tout effacer</button></div>
+    </div>
+    <div class="card"><h3 style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px;margin-bottom:11px">Résumé</h3><div class="reco-grid" id="data-summary"></div></div>
+  </div>
+
+  <!-- ONGLET MULTI-ÉCRANS -->
+  <div id="tab-multiscreen" class="tab-pane">
+    <h1 class="section-title">Multi-écrans</h1>
+    <p class="section-sub">Synchronisation temps réel via Firebase — fonctionne sur n'importe quel appareil connecté à internet</p>
+    <div class="sync-panel">
+      <h3>📡 CODE DE SESSION</h3>
+      <p>Partagez ce code sur n'importe quel PC, tablette ou téléphone. Toutes les données sont synchronisées en temps réel via Firebase.</p>
+      <div id="firebase-status-badge" class="firebase-status wait">⏳ Connexion Firebase en cours…</div>
+      <div class="code-display" id="session-code-display">—</div>
+      <div class="flex gap-8 wrap justify-center">
+        <button class="btn btn-sm" style="background:var(--orange);color:#fff" onclick="generateSessionCode()">🔄 Nouveau code</button>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25)" onclick="copySessionCode()">📋 Copier</button>
+      </div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <input class="input" id="join-code-input" placeholder="Saisir un code…" style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);color:#fff;max-width:200px">
+        <button class="btn btn-sm" style="background:var(--green);color:#fff" onclick="joinSession()">Rejoindre</button>
+      </div>
+      <div class="device-list" id="device-list" style="margin-top:12px"><div style="font-size:11px;color:rgba(255,255,255,.35)">Aucun autre appareil connecté</div></div>
+    </div>
+    <div class="two-col">
+      <div class="card text-center" style="cursor:pointer" onclick="openArbitre()">
+        <div style="font-size:38px;margin-bottom:9px">⚖️</div>
+        <div style="font-family:'Bebas Neue';font-size:17px;color:var(--blue);letter-spacing:1px;margin-bottom:5px">VUE ARBITRE</div>
+        <p class="text-sm text-muted">Optimisée téléphone/tablette. Score +/−, minuteur, enregistrement rapide.</p>
+        <button class="btn btn-primary btn-sm mt-12 w-full">Ouvrir</button>
+      </div>
+      <div class="card text-center" style="cursor:pointer" onclick="openScoreboard()">
+        <div style="font-size:38px;margin-bottom:9px">📺</div>
+        <div style="font-family:'Bebas Neue';font-size:17px;color:var(--blue);letter-spacing:1px;margin-bottom:5px">TABLEAU D'AFFICHAGE</div>
+        <p class="text-sm text-muted">Optimisé grand écran/TV. Classement et scores en direct, minuteur visible.</p>
+        <button class="btn btn-secondary btn-sm mt-12 w-full">Ouvrir</button>
+      </div>
+    </div>
+    <div class="card mt-16">
+      <h3 style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px;margin-bottom:9px">Comment ça fonctionne</h3>
+      <p class="text-sm text-muted" style="line-height:1.7">Les données sont synchronisées via <strong>Firebase Firestore</strong> en temps réel. Chaque modification (score, équipe, match) est mergée score par score — si deux arbitres saisissent des scores en même temps sur deux terrains différents, les deux scores sont préservés. Il suffit d'un accès internet. Aucun serveur à configurer.</p>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- MODALS -->
+<div class="modal-overlay" id="team-modal">
+  <div class="modal">
+    <h2 class="modal-title" id="team-modal-title">Nouvelle équipe</h2>
+    <div class="inline-fields">
+      <div class="field" style="flex:1"><label>Nom</label><input class="input" id="team-name-input" placeholder="Ex: Les Aigles" maxlength="30"></div>
+      <div class="field" style="flex:0"><label>Couleur</label><input type="color" id="team-color-input" value="#E8590C" style="width:50px;height:40px;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer;padding:2px"></div>
+    </div>
+    <div class="field">
+      <label>Ajouter des joueurs</label>
+      <div class="inline-fields">
+        <input class="input" id="player-input" placeholder="Prénom…" onkeydown="if(event.key==='Enter')addPlayerToForm()" style="margin:0">
+        <button class="btn btn-ghost btn-sm" onclick="addPlayerToForm()" style="flex-shrink:0">+ Ajouter</button>
+      </div>
+      <div id="form-players" class="player-chips" style="margin-top:7px"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('team-modal')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveTeam()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="match-modal">
+  <div class="modal">
+    <h2 class="modal-title">Nouveau match</h2>
+    <div class="inline-fields">
+      <div class="field"><label>Équipe A</label><select class="select" id="match-team-a"></select></div>
+      <div class="field"><label>Équipe B</label><select class="select" id="match-team-b"></select></div>
+    </div>
+    <div class="inline-fields">
+      <div class="field"><label>Épreuve</label><select class="select" id="match-event"></select></div>
+      <div class="field"><label>Terrain</label><select class="select" id="match-terrain"></select></div>
+    </div>
+    <div class="field"><label>Créneau horaire</label><input class="input" id="match-slot" type="time"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('match-modal')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveManualMatch()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="custom-event-modal">
+  <div class="modal">
+    <h2 class="modal-title">Épreuve personnalisée</h2>
+    <div class="field"><label>Nom</label><input class="input" id="ce-name" placeholder="Nom de l'épreuve"></div>
+    <div class="inline-fields">
+      <div class="field"><label>Catégorie</label><select class="select" id="ce-cat"><option value="hab">Habileté</option><option value="prec">Précision</option><option value="ref">Réflexion</option><option value="cg">Culture générale</option><option value="eq">Équilibre</option></select></div>
+      <div class="field"><label>Environnement</label><select class="select" id="ce-env"><option value="ext">Extérieur</option><option value="int">Intérieur</option><option value="both">Les deux</option></select></div>
+    </div>
+    <div class="field"><label>Durée</label><input class="input" id="ce-dur" placeholder="10-15 min"></div>
+    <div class="field"><label>Description</label><input class="input" id="ce-desc" placeholder="Description courte"></div>
+    <div class="field"><label>Règles (une par ligne)</label><textarea class="textarea" id="ce-rules"></textarea></div>
+    <div class="field"><label>Système de score</label><input class="input" id="ce-scoring" placeholder="L'équipe avec le plus de points gagne"></div>
+    <div class="inline-fields">
+      <div class="field"><label>Équipes min</label><input class="input" type="number" id="ce-min" value="2" min="2" max="12"></div>
+      <div class="field"><label>Équipes max</label><input class="input" type="number" id="ce-max" value="2" min="2" max="99"></div>
+    </div>
+    <label class="field" style="flex-direction:row;align-items:center;gap:8px;cursor:pointer">
+      <input type="checkbox" id="ce-multi" style="width:16px;height:16px;accent-color:var(--orange)">
+      <span style="font-size:13px">Peut se jouer à <strong>plusieurs équipes simultanément</strong> (match multi-équipes)</span>
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('custom-event-modal')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveCustomEvent()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="rules-modal">
+  <div class="modal" style="max-width:600px">
+    <h2 class="modal-title" id="rules-modal-title"></h2>
+    <div id="rules-modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('rules-modal')">Fermer</button>
+      <button class="btn btn-primary" onclick="downloadCurrentRulesPDF()">📄 Télécharger PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="bonus-cat-modal">
+  <div class="modal">
+    <h2 class="modal-title">Catégories de bonus</h2>
+    <div id="bonus-cats-form"></div>
+    <div class="flex gap-8 mt-12"><button class="btn btn-ghost btn-sm" onclick="addBonusCat()">+ Ajouter une catégorie</button></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('bonus-cat-modal')">Fermer</button>
+      <button class="btn btn-primary" onclick="saveBonusCats()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let teams            = [];
+let matches          = [];   // unified model: always has teams[], scores{}, format
+let terrains         = ['Terrain 1', 'Terrain 2'];
+let bonusCats        = [
+  { id:'fairplay',   name:'Fair-play',             color:'#4CAF50' },
+  { id:'creativite', name:'Créativité',             color:'#9C27B0' },
+  { id:'progres',    name:'Équipe la + progressée', color:'#FF9800' },
+];
+let bonusPoints      = {};   // { teamId: { catId: number } }
+let tournamentFormat = 'robin';
+let scoreFilter      = 'all';
+let formPlayers      = [];
+let editTeamId       = null;
+let currentRulesEvent = null;
+
+// Timer
+let arbTimer = { interval:null, remaining:900, running:false, duration:900 };
+let arbCurrentMatch = null;
+
+// Firebase sync
+let sessionCode   = null;
+let deviceId      = 'dev_' + Math.random().toString(36).substr(2,6);
+let syncDevices   = [];
+let _fbUnsub      = null;
+let _fbReady      = false;
+let _lastRemoteTs = 0;
+let _syncLastTs   = 0;
+
+// ═══════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════
+const CAT_LABELS = { prec:'Précision', hab:'Habileté', cg:'Culture générale', ref:'Réflexion', eq:'Équilibre' };
+const CAT_BADGE  = { prec:'badge-prec', hab:'badge-hab', cg:'badge-cg', ref:'badge-ref', eq:'badge-eq' };
+const ENV_LABELS = { ext:'Extérieur', int:'Intérieur', both:'Ext./Int.' };
+const ENV_BADGE  = { ext:'badge-ext', int:'badge-int', both:'badge-both' };
+const MEDAL      = ['🥇','🥈','🥉'];
+const MEDAL_COLS = ['#FFD700','#C0C0C0','#CD7F32'];
+const LS_KEY     = 'olympiades_v4';
+
+// ═══════════════════════════════════════════════════════
+//  EVENTS — injected
+// ═══════════════════════════════════════════════════════
+let EVENTS = [
+  {
+    id:'molky',icon:'🎯',name:'Mölkky',cat:'prec',env:'ext',dur:'10-15 min',
+    minTeams:2,maxTeams:2,multiTeamOk:false,
+    desc:'Jeu de lancer finlandais avec des quilles numérotées. Idéal pour tous les âges.',
+    rules:[
+      'Distance de lancer : 3 à 4 mètres des quilles',
+      'Quille seule abattue : les points indiqués sur la quille',
+      'Plusieurs quilles : 1 point par quille abattue',
+      'Victoire exactement à 50 points — si dépassement, retour à 25',
+      'Élimination après 3 lancers consécutifs sans abattre de quille',
+      'Durée max : 15 min ou premier à 50'
+    ],
+    scoring:"L'équipe la plus proche de 50 gagne (ou première à 50 exactement)"
+  },
+  {
+    id:'cornhole',icon:'🎳',name:'Cornhole',cat:'prec',env:'both',dur:'10-15 min',
+    minTeams:2,maxTeams:2,multiTeamOk:false,
+    desc:'Lancer de sacs de sable dans un trou. Jeu américain très populaire, adapté à tous.',
+    rules:[
+      'Distance entre planches : 9 m (adultes), 6 m (enfants)',
+      'Sac dans le trou : 3 points',
+      'Sac sur la planche : 1 point',
+      "Système d'annulation : les points des deux équipes se soustraient",
+      'Victoire à 21 points ou fin de temps (15 min max)',
+      '4 sacs par équipe par manche, 2 joueurs par équipe'
+    ],
+    scoring:"Système d'annulation. Premier à 21 (ou plus proche en fin de temps)"
+  },
+  {
+    id:'badminton',icon:'🏸',name:'Badminton',cat:'hab',env:'both',dur:'15 min',
+    minTeams:2,maxTeams:2,multiTeamOk:false,
+    desc:'Match simplifié en format court. Peut se jouer en simple ou double selon effectif.',
+    rules:[
+      'Set en 11 points (pas de déuce)',
+      'Service alterné tous les 3 points',
+      'Le volant doit passer le filet sans toucher le sol',
+      'Filet obligatoire — peut être remplacé par une corde',
+      'En double : les deux joueurs peuvent frapper dans leur camp'
+    ],
+    scoring:"L'équipe qui atteint 11 points en premier gagne"
+  },
+  {
+    id:'sac',icon:'👟',name:'Course en sac',cat:'hab',env:'ext',dur:'10 min',
+    minTeams:2,maxTeams:6,multiTeamOk:true,
+    desc:'Course classique avec les jambes dans un sac. Hilarant et accessible à tous les âges.',
+    rules:[
+      'Chaque joueur entre ses jambes dans le sac et tient le bord avec les mains',
+      'Signal de départ : arbitre',
+      'Si le sac tombe, on le remet et on repart depuis la position actuelle',
+      'Format relais : chaque équipe aligne ses joueurs, le sac est passé au suivant',
+      'Distance : 15 à 20 mètres aller-retour'
+    ],
+    scoring:"L'équipe dont tous les joueurs finissent en premier gagne (classement par ordre d'arrivée)"
+  },
+  {
+    id:'quiz',icon:'🧠',name:'Quiz culture générale',cat:'cg',env:'int',dur:'15-20 min',
+    minTeams:2,maxTeams:8,multiTeamOk:true,
+    desc:'Questions de culture générale pour toutes les équipes en même temps. Papier/crayon suffisent.',
+    rules:[
+      'Toutes les équipes jouent simultanément — pas besoin de buzzer',
+      '10 questions posées par le meneur de jeu',
+      'Chaque équipe note ses réponses sur une feuille sans la montrer',
+      'Correction collective après chaque série de questions',
+      '1 point par bonne réponse',
+      'Variante : bonus de 2 pts pour une réponse parfaitement exacte'
+    ],
+    scoring:"L'équipe avec le plus de bonnes réponses gagne. En cas d'égalité, question subsidiaire"
+  },
+  {
+    id:'palet',icon:'🥏',name:'Palet breton',cat:'prec',env:'ext',dur:'10-15 min',
+    minTeams:2,maxTeams:2,multiTeamOk:false,
+    desc:'Lancer de palets métalliques sur une planche. Précision et stratégie.',
+    rules:[
+      'Distance de lancer : 4 mètres',
+      'Palet dans le trou : 5 points',
+      'Palet le plus proche du trou : 1 point',
+      'Les palets qui tombent ne comptent pas',
+      '6 palets par équipe par manche',
+      '4 manches par match'
+    ],
+    scoring:"Vainqueur : équipe avec le plus de points après 4 manches"
+  },
+  {
+    id:'jenga',icon:'🏗️',name:'Jenga géant',cat:'ref',env:'both',dur:'10-15 min',
+    minTeams:2,maxTeams:4,multiTeamOk:true,
+    desc:'Jenga en grand format. Chaque équipe joue à tour de rôle. Celui qui fait tomber la tour perd.',
+    rules:[
+      'Chaque équipe joue à tour de rôle dans le sens horaire',
+      'On retire un bloc par tour et on le repose au sommet',
+      "On ne peut utiliser qu'une seule main à la fois",
+      "Droit de tâter les blocs avant de choisir, mais interdit de remettre un bloc sorti à moitié",
+      "La tour doit rester stable 5 secondes après avoir posé le bloc pour que le tour soit valide",
+      "L'équipe qui fait tomber la tour est éliminée"
+    ],
+    scoring:"Classement par ordre d'élimination. Dernier en lice = vainqueur"
+  },
+  {
+    id:'relais',icon:'🎈',name:'Relais ballon-genoux',cat:'hab',env:'ext',dur:'10 min',
+    minTeams:2,maxTeams:6,multiTeamOk:true,
+    desc:"Relais où le ballon se transporte coincé entre les genoux. Drôle et physique.",
+    rules:[
+      'Le ballon doit rester coincé entre les genoux en permanence',
+      "Si le ballon tombe, retour au départ pour ce joueur",
+      'Relais : passage du ballon à la main au coéquipier suivant',
+      'Distance : 10 à 15 mètres aller-retour',
+      'Tous les joueurs de l\'équipe doivent avoir joué au moins une fois'
+    ],
+    scoring:"L'équipe dont tous les joueurs finissent en premier gagne"
+  },
+  {
+    id:'memory',icon:'🃏',name:'Memory géant',cat:'ref',env:'int',dur:'10-15 min',
+    minTeams:2,maxTeams:4,multiTeamOk:true,
+    desc:'Memory format géant avec cartes imprimées. Mémoire et concentration.',
+    rules:[
+      '40 cartes (20 paires) disposées face cachée sur le sol',
+      'Chaque équipe retourne 2 cartes par tour',
+      'Paire trouvée : l\'équipe rejoue et garde les cartes',
+      'Pas de paire : les cartes sont retournées et c\'est au tour suivant',
+      'Les cartes trouvées sont retirées du jeu'
+    ],
+    scoring:"L'équipe avec le plus de paires gagne"
+  },
+  {
+    id:'petanque',icon:'⚽',name:'Pétanque express',cat:'prec',env:'ext',dur:'15 min',
+    minTeams:2,maxTeams:2,multiTeamOk:false,
+    desc:'Format accéléré de pétanque. Buts courts, parties rapides.',
+    rules:[
+      'Cochonnet lancé à 4-6 mètres',
+      '3 boules par équipe (ou 2 si peu de boules disponibles)',
+      'L\'équipe la plus proche du cochonnet marque 1 point par boule devant toutes celles de l\'adversaire',
+      'Victoire à 7 points',
+      'En cas de boule touchant le cochonnet : bouchon reste là où il atterrit'
+    ],
+    scoring:"Premier à 7 points gagne"
+  },
+  {
+    id:'bowling',icon:'🎳',name:'Bowling de jardin',cat:'prec',env:'ext',dur:'10 min',
+    minTeams:2,maxTeams:4,multiTeamOk:true,
+    desc:'Bowling avec bouteilles plastiques remplies de sable et ballon de foot.',
+    rules:[
+      '10 quilles (bouteilles) disposées en triangle à 5 mètres',
+      'Chaque joueur a 2 lancers par tour',
+      'Strike (tout au 1er lancer) : 10 points + prochain lancer',
+      'Spare (tout au 2e) : 10 points + prochain lancer',
+      'Sinon : nombre de quilles renversées',
+      '5 tours par match (format rapide)'
+    ],
+    scoring:"L'équipe avec le plus de points après 5 tours gagne"
+  },
+  {
+    id:'tir-corde',icon:'💪',name:'Tir à la corde',cat:'eq',env:'ext',dur:'10-15 min',
+    minTeams:2,maxTeams:2,multiTeamOk:false,
+    desc:'Classique ! Deux équipes tirent une corde en sens opposés. Force et coordination.',
+    rules:[
+      'Corde de chanvre ou similaire, avec foulard au milieu marquant le centre',
+      'Marque au sol : ligne centrale et deux lignes à 2m de chaque côté',
+      "L'équipe qui tire le foulard de 2m de son côté gagne la manche",
+      '3 manches par match, 2 victoires pour gagner',
+      'Interdiction de s\'enrouler la corde autour du corps'
+    ],
+    scoring:"2 manches gagnées sur 3 = victoire"
+  },
+  {
+    id:'course-chaise',icon:'🪑',name:'Course en chaise',cat:'hab',env:'both',dur:'10 min',
+    minTeams:2,maxTeams:6,multiTeamOk:true,
+    desc:'Avancer sans poser les pieds au sol, en utilisant seulement 2 chaises.',
+    rules:[
+      '2 chaises par joueur',
+      'Se déplacer en posant une chaise devant soi, monter dessus, ramener la chaise de derrière',
+      'Interdit de poser les pieds au sol — pénalité : retour 2 mètres en arrière',
+      'Distance : 10 mètres',
+      'Format relais : passer les chaises au suivant'
+    ],
+    scoring:"L'équipe dont tous les joueurs finissent en premier gagne"
+  },
+  {
+    id:'tir-au-but',icon:'⚽',name:'Tir au but',cat:'prec',env:'ext',dur:'10-15 min',
+    minTeams:2,maxTeams:6,multiTeamOk:true,
+    desc:'Tir au but avec 3 cibles numérotées. Précision récompensée.',
+    rules:[
+      '3 cibles dans le but : 10 pts (coin), 5 pts (côté), 1 pt (centre)',
+      'Chaque joueur tire 3 fois',
+      'Distance de tir : 8 mètres (adultes), 5 mètres (enfants)',
+      'Le gardien est optionnel (mode sans gardien recommandé pour équité)',
+      'Score de l\'équipe = somme des points de tous les joueurs'
+    ],
+    scoring:"L'équipe avec le plus de points gagne"
+  },
+  {
+    id:'course-folle',icon:'🔗',name:'La course folle',cat:'hab',env:'both',dur:'10 min',
+    minTeams:2,maxTeams:6,multiTeamOk:true,
+    desc:'Dos à dos, bras accrochés — courir ensemble sans se séparer.',
+    rules:[
+      '2 joueurs par binôme, dos à dos, bras enlacés',
+      'Distance : 15 mètres aller-retour',
+      'Si les bras se décrochent : arrêt, reformation sur place',
+      'Format relais : les binômes se succèdent',
+      'Toute l\'équipe doit participer (binômes formés à l\'avance)'
+    ],
+    scoring:"L'équipe dont tous les binômes finissent en premier gagne"
+  },
+  {
+    id:'trois-pattes',icon:'👣',name:'Parcours à 3 pattes',cat:'hab',env:'both',dur:'10 min',
+    minTeams:2,maxTeams:6,multiTeamOk:true,
+    desc:'Deux joueurs attachés par la cheville courent ensemble. Coordination et fous rires garantis.',
+    rules:[
+      '2 joueurs attachés à la cheville (foulard ou velcro)',
+      'Avancer en se coordonnant : pied extérieur G et pied extérieur D en même temps',
+      'Si chute : se relever sur place',
+      'Distance : 20 mètres',
+      'Format relais si beaucoup de joueurs'
+    ],
+    scoring:"L'équipe dont tous les duos finissent en premier gagne"
+  },
+  {
+    id:'circuit-aveugle',icon:'🙈',name:'Le circuit à l\'aveugle',cat:'ref',env:'both',dur:'10-15 min',
+    minTeams:2,maxTeams:4,multiTeamOk:false,
+    desc:'Un joueur les yeux bandés, guidé verbalement par son équipe à travers un parcours.',
+    rules:[
+      'Parcours de 15 mètres avec 5 à 8 obstacles (chaises, cônes...)',
+      'Le joueur bandé doit suivre les consignes verbales de son équipe uniquement',
+      "Interdit de toucher le joueur ou les obstacles pour l'aider",
+      'Chaque obstacle touché : +3 secondes de pénalité',
+      'Score final = temps + pénalités'
+    ],
+    scoring:"L'équipe avec le meilleur temps (pénalités incluses) gagne"
+  },
+  {
+    id:'garcons-cafe',icon:'🥛',name:'Les garçons de café',cat:'eq',env:'ext',dur:'10 min',
+    minTeams:2,maxTeams:6,multiTeamOk:true,
+    desc:'Relais avec un verre d\'eau à transporter sans en renverser vers une casserole collective.',
+    rules:[
+      'Chaque joueur transporte un verre d\'eau plein sur un plateau (ou à la main)',
+      'Distance : 15 mètres aller-retour',
+      'Verser l\'eau dans une casserole commune à l\'arrivée',
+      'Interdit de courir — marche rapide uniquement',
+      'L\'équipe avec le plus d\'eau dans la casserole gagne'
+    ],
+    scoring:"Mesurez l'eau dans la casserole avec une règle ou un verre gradué. Maximum = victoire"
+  },
+  {
+    id:'limbo-eau',icon:'🥤',name:'Limbo ou pas… ?',cat:'eq',env:'ext',dur:'10-15 min',
+    minTeams:2,maxTeams:6,multiTeamOk:true,
+    desc:'Variante mouillée du limbo. Verre d\'eau sur la tête + passer sous la barre.',
+    rules:[
+      'Verre d\'eau posé sur la tête, les mains dans le dos',
+      'Passer sous la barre de limbo sans la toucher ni renverser le verre',
+      '1 passage par joueur par hauteur de barre',
+      'La barre descend de 5 cm à chaque tour',
+      '2 points si passage réussi, 1 point si verre renversé mais barre non touchée, 0 si échec'
+    ],
+    scoring:"L'équipe avec le plus de points gagne"
+  },
+  {
+    id:'timesup',icon:'⏱️',name:"Time's Up !",cat:'cg',env:'int',dur:'20-30 min',
+    minTeams:2,maxTeams:6,multiTeamOk:true,
+    desc:'3 manches progressives : description libre, mime, puis un seul mot. 30 cartes de célébrités/personnages.',
+    rules:[
+      'Préparer 30 cartes (personnages, films, objets...)',
+      'Manche 1 : description libre (pas le mot), 30 secondes par équipe',
+      'Manche 2 : mime uniquement (mêmes cartes, mélangées), 30 secondes',
+      'Manche 3 : un seul mot (mêmes cartes, mélangées), 30 secondes',
+      'Les cartes trouvées sont gardées par l\'équipe qui les a trouvées dans la manche en cours',
+      'Les cartes non trouvées retournent dans le paquet'
+    ],
+    scoring:"Total des cartes trouvées sur les 3 manches. L'équipe avec le plus de cartes gagne"
+  },
+  {
+    id:'tour-pise',icon:'🃏',name:'La tour de Pise',cat:'ref',env:'int',dur:'10 min',
+    minTeams:2,maxTeams:4,multiTeamOk:true,
+    desc:'Construire la tour de cartes la plus haute avec 52 cartes. 3 essais, chrono de 10 min.',
+    rules:[
+      '52 cartes standard par équipe (ou partagées)',
+      'Construire la tour la plus haute possible',
+      '3 essais max en 10 minutes',
+      'Seul le meilleur essai compte',
+      'Mesure à la fin : hauteur du point le plus bas de la carte du sommet',
+      'La tour doit tenir seule au moins 5 secondes'
+    ],
+    scoring:"La tour la plus haute (en cm) gagne. En cas d'égalité : la plus stable (arbitre)"
+  },
+  {
+    id:'just-dance',icon:'🕺',name:'Just Dance',cat:'hab',env:'int',dur:'10-15 min',
+    minTeams:2,maxTeams:6,multiTeamOk:true,
+    desc:'Le capitaine de chaque équipe danse sur Just Dance (Switch). Score cumulé sur plusieurs chansons.',
+    rules:[
+      'Le capitaine désigné joue pour son équipe',
+      '2 chansons tirées au sort parmi une liste prédéfinie',
+      'Score Just Dance affiché à la fin de chaque chanson',
+      'Total des 2 chansons = score de l\'équipe',
+      'Rotation possible entre les membres pour la 2e chanson'
+    ],
+    scoring:"Somme des scores Just Dance sur les 2 chansons. Le plus haut total gagne"
+  },
+  {
+    id:'pokemon',icon:'⚡',name:'Tournoi Pokémon accéléré',cat:'ref',env:'int',dur:'10-15 min',
+    minTeams:2,maxTeams:2,multiTeamOk:false,
+    desc:'Duels Pokémon format accéléré. 3 Pokémon niveau 50, Showdown autorisé.',
+    rules:[
+      '3 Pokémon chacun, niveau 50, choisis à l\'avance',
+      'Format : Singles (1v1, avec 3 Pokémon en réserve)',
+      'Pas de légendraires ni d\'objets mega/Z-moves',
+      'Showdown en ligne autorisé si pas de cartouche disponible',
+      'Timer : 5 minutes par combat (format accéléré)',
+      "En fin de temps : l'équipe avec le plus de Pokémon restants gagne"
+    ],
+    scoring:"Victoire si tous les Pokémon adverses sont K.O. ou avantage numérique en fin de temps"
+  },
+  {
+    id:'mario-kart',icon:'🏎️',name:'Mario Kart',cat:'hab',env:'int',dur:'15-20 min',
+    minTeams:2,maxTeams:4,multiTeamOk:true,
+    desc:'Le capitaine joue toutes les courses pour son équipe. Score = somme des places.',
+    rules:[
+      'Le capitaine désigné joue pour toute son équipe',
+      '4 courses tirées au sort (ou Grand Prix)',
+      'Score = position à chaque course (1er = 1 pt, 2e = 2 pts, etc.)',
+      'Les autres membres de l\'équipe peuvent conseiller',
+      'Rotation du capitaine possible entre les courses si décidé avant le début'
+    ],
+    scoring:"Le moins de points gagne (somme des positions). Ex: 1+2+1+3 = 7 pts"
+  }
+];
+
+
+// ═══════════════════════════════════════════════════════
+//  MATCH MODEL HELPERS
+//  Every match always uses: teams[], scores{}, format, status
+//  Legacy fields teamA/teamB/scoreA/scoreB kept for compat
+// ═══════════════════════════════════════════════════════
+function makeMatch(teamIds, eventId, terrain, format) {
+  const scores = {};
+  teamIds.forEach(tid => { scores[tid] = null; });
+  return {
+    id: uid(),
+    teams: teamIds,
+    scores,
+    eventId: eventId || null,
+    terrain: terrain || '',
+    slot: null,
+    format: format || (teamIds.length === 2 ? 'duel' : 'multi'),
+    status: 'pending',
+    champGroup: null,
+    // legacy
+    teamA: teamIds[0], teamB: teamIds[1] || null,
+    get scoreA() { return this.scores[this.teamA]; },
+    set scoreA(v){ this.scores[this.teamA] = v; },
+    get scoreB() { return this.scores[this.teamB]; },
+    set scoreB(v){ if(this.teamB) this.scores[this.teamB] = v; },
+  };
+}
+
+// Normalise matches loaded from storage (may lack teams[] / scores{})
+function normaliseMatch(m) {
+  if (!m.teams) {
+    m.teams = m.teamB ? [m.teamA, m.teamB] : [m.teamA];
+  }
+  if (!m.scores) {
+    m.scores = {};
+    m.teams.forEach(tid => { m.scores[tid] = null; });
+    if (m.teamA && m.scoreA !== undefined) m.scores[m.teamA] = m.scoreA;
+    if (m.teamB && m.scoreB !== undefined) m.scores[m.teamB] = m.scoreB;
+  }
+  if (!m.format) m.format = m.teams.length === 2 ? 'duel' : 'multi';
+  if (!m.status) m.status = 'pending';
+  return m;
+}
+
+function getScore(m, teamId) {
+  if (m.scores && teamId in m.scores) return m.scores[teamId];
+  if (teamId === m.teamA) return m.scoreA ?? null;
+  if (teamId === m.teamB) return m.scoreB ?? null;
+  return null;
+}
+
+function setScore(matchId, teamId, val) {
+  const m = matches.find(m => m.id === matchId);
+  if (!m) return;
+  const v = val === '' ? null : parseFloat(val);
+  if (!m.scores) m.scores = {};
+  m.scores[teamId] = isNaN(v) ? null : v;
+  // sync legacy
+  if (teamId === m.teamA) m.scoreA = m.scores[teamId];
+  if (teamId === m.teamB) m.scoreB = m.scores[teamId];
+  // auto-set ongoing
+  const anyScore = Object.values(m.scores).some(s => s !== null);
+  if (anyScore && (!m.status || m.status === 'pending')) m.status = 'ongoing';
+  persistState(); broadcastState();
+  if (document.getElementById('tab-program')?.classList.contains('active')) renderMatches();
+}
+
+function isMatchDone(m) {
+  return m.status === 'done' ||
+    (m.teams && m.teams.length > 0 && m.teams.every(tid => m.scores && m.scores[tid] !== null));
+}
+
+function matchWinners(m) {
+  if (!m.teams || !m.scores) return [];
+  const scored = m.teams.filter(tid => m.scores[tid] !== null);
+  if (scored.length !== m.teams.length) return [];
+  const max = Math.max(...m.teams.map(tid => Number(m.scores[tid])));
+  return m.teams.filter(tid => Number(m.scores[tid]) === max);
+}
+
+// ═══════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════
+function esc(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function uid()   { return '_' + Math.random().toString(36).substr(2,9); }
+function getTeam(id)  { return teams.find(t => t.id === id) || { id, name:'?', color:'#ccc', players:[] }; }
+function getEvent(id) { return EVENTS.find(e => e.id === id) || null; }
+function fmtTime(sec) {
+  const m = Math.floor(sec/60), s = sec%60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast ' + type; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+function openModal(id) {
+  if (id === 'team-modal')      prepTeamModal();
+  if (id === 'match-modal')     prepMatchModal();
+  if (id === 'bonus-cat-modal') renderBonusCatsForm();
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  if (id === 'team-modal') { formPlayers = []; editTeamId = null; }
+}
+document.querySelectorAll('.modal-overlay').forEach(el =>
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); })
+);
+
+// ═══════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════
+function showTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  const map = { teams:0, program:1, scores:2, ranking:3, bonus:4, data:5, multiscreen:6 };
+  document.querySelectorAll('.tab-btn')[map[name]]?.classList.add('active');
+  if (name === 'ranking')     renderRanking();
+  if (name === 'program')     { updateEventsNeededInfo(); updateFormatInfo(); renderPlanningGrid(); }
+  if (name === 'scores')      renderScoresTab();
+  if (name === 'bonus')       renderBonusTable();
+  if (name === 'data')        renderDataSummary();
+  if (name === 'multiscreen') updateDeviceList();
+}
+
+// ═══════════════════════════════════════════════════════
+//  TEAMS
+// ═══════════════════════════════════════════════════════
+function prepTeamModal(teamId) {
+  formPlayers = []; editTeamId = teamId || null;
+  document.getElementById('team-modal-title').textContent = teamId ? "Modifier l'équipe" : 'Nouvelle équipe';
+  if (teamId) {
+    const t = getTeam(teamId);
+    document.getElementById('team-name-input').value  = t.name;
+    document.getElementById('team-color-input').value = t.color;
+    formPlayers = [...t.players];
+  } else {
+    document.getElementById('team-name-input').value  = '';
+    document.getElementById('team-color-input').value = randomColor();
+  }
+  renderFormPlayers();
+}
+function randomColor() {
+  const palette = ['#E8590C','#1E3A5F','#2D9E5F','#9C27B0','#E91E63','#FF5722','#795548','#607D8B','#3F51B5','#009688','#F44336','#00BCD4'];
+  const used = teams.map(t => t.color);
+  return palette.find(c => !used.includes(c)) || palette[Math.floor(Math.random()*palette.length)];
+}
+function addPlayerToForm() {
+  const v = document.getElementById('player-input').value.trim();
+  if (!v) return;
+  formPlayers.push(v); document.getElementById('player-input').value = '';
+  renderFormPlayers();
+}
+function renderFormPlayers() {
+  const el = document.getElementById('form-players');
+  if (!formPlayers.length) { el.innerHTML = '<span class="text-muted text-xs">Aucun joueur ajouté</span>'; return; }
+  el.innerHTML = formPlayers.map((p,i) =>
+    `<div class="player-chip">${esc(p)}<button class="chip-del" onclick="removeFormPlayer(${i})">×</button></div>`
+  ).join('');
+}
+function removeFormPlayer(idx) { formPlayers.splice(idx,1); renderFormPlayers(); }
+
+function saveTeam() {
+  const name = document.getElementById('team-name-input').value.trim();
+  if (!name) { showToast("Donnez un nom à l'équipe",'error'); return; }
+  const color = document.getElementById('team-color-input').value;
+  if (editTeamId) {
+    const t = teams.find(t => t.id === editTeamId);
+    Object.assign(t, { name, color, players:[...formPlayers] });
+  } else {
+    teams.push({ id:uid(), name, color, players:[...formPlayers] });
+  }
+  closeModal('team-modal');
+  renderTeams(); renderReco(); renderEventsLibrary();
+  persistState(); broadcastState();
+  showToast(editTeamId ? 'Équipe modifiée ✓' : 'Équipe créée ✓', 'success');
+}
+function deleteTeam(id) {
+  if (!confirm('Supprimer cette équipe et ses matchs ?')) return;
+  teams   = teams.filter(t => t.id !== id);
+  matches = matches.filter(m => !m.teams.includes(id));
+  // Clean bonus points for deleted team
+  delete bonusPoints[id];
+  renderTeams(); renderReco(); renderMatches(); renderEventsLibrary();
+  persistState(); broadcastState();
+  showToast('Équipe supprimée');
+}
+
+function renderTeams() {
+  const el = document.getElementById('teams-grid');
+  document.getElementById('teams-sub').textContent =
+    `${teams.length} équipe${teams.length!==1?'s':''} · ${teams.reduce((s,t)=>s+t.players.length,0)} joueurs`;
+  if (!teams.length) {
+    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">👥</div><p>Aucune équipe créée.</p></div>`;
+    return;
+  }
+  el.innerHTML = teams.map(t => {
+    const mCnt = matches.filter(m => m.teams.includes(t.id)).length;
+    const wins  = matches.filter(m => isMatchDone(m) && matchWinners(m).length === 1 && matchWinners(m)[0] === t.id).length;
+    return `
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="background:${t.color};padding:13px 15px;border-radius:var(--r-lg) var(--r-lg) 0 0;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="team-avatar">${t.name[0].toUpperCase()}</div>
+          <div>
+            <div style="font-family:'Bebas Neue';font-size:17px;color:#fff;letter-spacing:1px">${esc(t.name)}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.7)">${t.players.length} joueur${t.players.length!==1?'s':''} · ${mCnt} match${mCnt!==1?'s':''} · ${wins}V</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.18);color:#fff;border:none;padding:5px 8px" onclick="openModal('team-modal');prepTeamModal('${t.id}')">✏️</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.18);color:#fff;border:none;padding:5px 8px" onclick="deleteTeam('${t.id}')">🗑</button>
+        </div>
+      </div>
+      <div style="padding:0 15px 14px">
+        <div class="player-chips" style="margin-top:11px">
+          ${t.players.length ? t.players.map(p=>`<div class="player-chip">${esc(p)}</div>`).join('') : '<span class="text-muted text-xs">Aucun joueur</span>'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderReco() {
+  const box = document.getElementById('reco-box');
+  if (!teams.length) { box.style.display='none'; return; }
+  box.style.display = 'block';
+  const n = teams.length, totalP = teams.reduce((s,t)=>s+t.players.length,0);
+  const idealMin = Math.max(2, Math.ceil(totalP/10));
+  const idealMax = Math.ceil(totalP/5);
+  const robinCount = n*(n-1)/2;
+  const slotMin = parseInt(document.getElementById('slot-duration')?.value||20);
+  const slotPause = parseInt(document.getElementById('slot-pause')?.value||5);
+  const mpd = Math.floor(480/(slotMin+slotPause));
+  const days = Math.max(1, Math.ceil(robinCount/mpd));
+  const advice = !totalP ? 'Ajoutez des joueurs.'
+    : n<idealMin ? `⚠️ ${idealMin}–${idealMax} équipes idéales.`
+    : idealMax>0&&n>idealMax ? '⚠️ Équipes petites, envisagez de fusionner.'
+    : `✅ Idéal — ${Math.round(totalP/n)} joueurs/équipe.`;
+  document.getElementById('reco-grid').innerHTML = `
+    <div class="reco-item"><div class="rl">Joueurs</div><div class="rv">${totalP}</div><div class="rh">${n} équipes</div></div>
+    <div class="reco-item"><div class="rl">Idéal</div><div class="rv">${idealMin}–${idealMax}</div><div class="rh">équipes</div></div>
+    <div class="reco-item"><div class="rl">Round-robin</div><div class="rv">${robinCount}</div><div class="rh">matchs</div></div>
+    <div class="reco-item"><div class="rl">Durée est.</div><div class="rv">${days}j</div><div class="rh">~${mpd}/jour</div></div>
+    <div class="reco-item" style="grid-column:1/-1"><div class="rh" style="font-size:12px">${advice}</div></div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  TERRAINS
+// ═══════════════════════════════════════════════════════
+function addTerrain() {
+  const name = prompt('Nom du terrain ?', `Terrain ${terrains.length+1}`);
+  if (name && name.trim()) { terrains.push(name.trim()); renderTerrains(); persistState(); }
+}
+function removeTerrain(idx) {
+  if (terrains.length <= 1) { showToast('Au moins 1 terrain requis','error'); return; }
+  terrains.splice(idx,1); renderTerrains(); persistState();
+}
+function renderTerrains() {
+  document.getElementById('terrains-list').innerHTML = terrains.map((t,i) =>
+    `<div class="badge" style="background:var(--blue-light);color:var(--blue);font-size:11px;padding:5px 11px;border-radius:20px;display:inline-flex;align-items:center;gap:5px">
+      📍 ${esc(t)}
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;line-height:1;padding:0" onclick="removeTerrain(${i})">×</button>
+    </div>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  FORMAT & GENERATION
+// ═══════════════════════════════════════════════════════
+function selectFormat(fmt) {
+  tournamentFormat = fmt;
+  ['robin','manual','championship'].forEach(f =>
+    document.getElementById('fmt-'+f)?.classList.toggle('selected', f===fmt)
+  );
+  updateFormatInfo();
+}
+
+function updateFormatInfo() {
+  const el = document.getElementById('robin-info');
+  if (!el) return;
+  const n = teams.length;
+  if (tournamentFormat === 'robin' && n) {
+    const cnt = n*(n-1)/2;
+    el.style.display = 'block'; el.className = 'info-box';
+    el.innerHTML = `Avec <strong>${n} équipes</strong>, le round-robin génère <strong>${cnt} match${cnt>1?'s':''}</strong>.`;
+  } else if (tournamentFormat === 'championship') {
+    const sel = getSelectedEventIds();
+    if (!n || !sel.length) { el.style.display='none'; return; }
+    const pairs = n*(n-1)/2;
+    const duelEvts  = sel.filter(id => { const ev=getEvent(id); return ev && !ev.multiTeamOk; }).length;
+    const multiEvts = sel.filter(id => { const ev=getEvent(id); return ev && ev.multiTeamOk; }).length;
+    const total = duelEvts * pairs + multiEvts;
+    el.style.display = 'block'; el.className = 'info-box';
+    el.innerHTML = `🏆 <strong>Championnat</strong> : ${duelEvts} épreuve${duelEvts>1?'s':''} duels (${duelEvts*pairs} matchs) + ${multiEvts} multi-équipes = <strong>${total} matchs/manches</strong>.`;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function getSelectedEventIds() {
+  return [...document.querySelectorAll('.event-card.selected')]
+    .map(el => el.id.replace('evcard-',''))
+    .filter(id => EVENTS.find(e => e.id === id));
+}
+
+function generateMatches() {
+  if (teams.length < 2) { showToast('Il faut au moins 2 équipes','error'); return; }
+  matches = [];
+  let idx = 0;
+  for (let i=0; i<teams.length; i++) {
+    for (let j=i+1; j<teams.length; j++) {
+      const m = makeMatch([teams[i].id, teams[j].id], null, terrains[idx%terrains.length], 'duel');
+      matches.push(m); idx++;
+    }
+  }
+  renderMatches(); updateEventsNeededInfo(); renderPlanningGrid(); renderReco();
+  persistState(); broadcastState();
+  showToast(`${matches.length} matchs générés ✓`, 'success');
+}
+
+function generateChampionship() {
+  if (teams.length < 2) { showToast('Il faut au moins 2 équipes','error'); return; }
+  const selectedIds = getSelectedEventIds();
+  if (!selectedIds.length) { showToast('Sélectionnez au moins une épreuve','error'); return; }
+  matches = [];
+  let slotIdx = 0;
+  selectedIds.forEach(evId => {
+    const ev = getEvent(evId);
+    if (!ev) return;
+    if (ev.multiTeamOk && teams.length >= (ev.minTeams||2) && teams.length <= (ev.maxTeams||99)) {
+      const m = makeMatch(teams.map(t=>t.id), evId, terrains[slotIdx%terrains.length], 'multi');
+      m.champGroup = evId;
+      matches.push(m); slotIdx++;
+    } else {
+      for (let i=0; i<teams.length; i++) {
+        for (let j=i+1; j<teams.length; j++) {
+          const m = makeMatch([teams[i].id, teams[j].id], evId, terrains[slotIdx%terrains.length], 'duel');
+          m.champGroup = evId;
+          matches.push(m); slotIdx++;
+        }
+      }
+    }
+  });
+  renderMatches(); updateEventsNeededInfo(); renderPlanningGrid(); renderReco();
+  persistState(); broadcastState();
+  showToast(`Championnat : ${matches.length} matchs générés ✓`, 'success');
+  updateFormatInfo();
+}
+
+function autoSchedule() {
+  if (!matches.length) { showToast("Générez d'abord les matchs",'error'); return; }
+  const startStr = document.getElementById('start-time').value||'09:00';
+  const slotMin  = parseInt(document.getElementById('slot-duration').value||20);
+  const pauseMin = parseInt(document.getElementById('slot-pause').value||5);
+  const [sh,sm]  = startStr.split(':').map(Number);
+  let startTotal = sh*60+sm;
+  const step = slotMin+pauseMin;
+  const duelMs  = matches.filter(m => m.format!=='multi');
+  const multiMs = matches.filter(m => m.format==='multi');
+  const rounds=[], remaining=[...duelMs];
+  while(remaining.length){
+    const round=[], used=new Set(), toRm=[];
+    for(let i=0;i<remaining.length;i++){
+      const m=remaining[i];
+      const teamIds = m.teams||[];
+      if(teamIds.every(tid=>!used.has(tid))){
+        round.push(m); teamIds.forEach(tid=>used.add(tid)); toRm.push(i);
+      }
+    }
+    toRm.reverse().forEach(i=>remaining.splice(i,1));
+    rounds.push(round);
+  }
+  rounds.forEach((round,ri)=>{
+    const t2=startTotal+ri*step, h=Math.floor(t2/60)%24, m2=t2%60;
+    const slot=`${String(h).padStart(2,'0')}:${String(m2).padStart(2,'0')}`;
+    round.forEach((m,ti)=>{ m.slot=slot; m.terrain=terrains[ti%terrains.length]; });
+  });
+  const afterRounds=startTotal+rounds.length*step;
+  multiMs.forEach((m,i)=>{
+    const t2=afterRounds+i*step, h=Math.floor(t2/60)%24, m2=t2%60;
+    m.slot=`${String(h).padStart(2,'0')}:${String(m2).padStart(2,'0')}`;
+    m.terrain=terrains[i%terrains.length];
+  });
+  renderMatches(); renderPlanningGrid();
+  persistState(); broadcastState();
+  showToast('Planning auto-généré ✓','success');
+}
+
+function clearMatches() {
+  if(!confirm('Vider tous les matchs ?')) return;
+  matches=[];
+  renderMatches(); updateEventsNeededInfo(); renderPlanningGrid();
+  persistState(); broadcastState();
+  showToast('Matchs supprimés');
+}
+
+function updateEventsNeededInfo() {
+  const el = document.getElementById('events-needed-info');
+  if(!matches.length){ el.style.display='none'; return; }
+  const needed=matches.length, assigned=matches.filter(m=>m.eventId).length;
+  el.style.display='block';
+  el.innerHTML=`📌 <strong>${needed}</strong> match${needed>1?'s':''} · <strong>${assigned}</strong> épreuve${assigned>1?'s':''} assignée${assigned>1?'s':''}.`;
+}
+
+function prepMatchModal() {
+  const opts = teams.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
+  document.getElementById('match-team-a').innerHTML = opts;
+  document.getElementById('match-team-b').innerHTML = opts;
+  document.getElementById('match-event').innerHTML =
+    `<option value="">— Épreuve —</option>`+EVENTS.map(e=>`<option value="${e.id}">${e.icon} ${esc(e.name)}</option>`).join('');
+  document.getElementById('match-terrain').innerHTML = terrains.map(t=>`<option value="${t}">${esc(t)}</option>`).join('');
+  document.getElementById('match-slot').value='';
+}
+function saveManualMatch() {
+  const a=document.getElementById('match-team-a').value;
+  const b=document.getElementById('match-team-b').value;
+  if(a===b){ showToast('Deux équipes différentes','error'); return; }
+  const ev=document.getElementById('match-event').value;
+  const ter=document.getElementById('match-terrain').value;
+  const slot=document.getElementById('match-slot').value;
+  if(slot){
+    const conflict=matches.find(m=>m.slot===slot&&m.teams.some(tid=>tid===a||tid===b));
+    if(conflict){ showToast('⚠️ Conflit de créneau','error'); return; }
+  }
+  const m = makeMatch([a,b], ev||null, ter, 'duel');
+  m.slot = slot||null;
+  matches.push(m);
+  closeModal('match-modal');
+  renderMatches(); updateEventsNeededInfo(); renderPlanningGrid();
+  persistState(); broadcastState();
+  showToast('Match ajouté ✓','success');
+}
+function deleteMatch(id) {
+  matches=matches.filter(m=>m.id!==id);
+  renderMatches(); updateEventsNeededInfo(); renderPlanningGrid();
+  persistState(); broadcastState();
+  showToast('Match supprimé');
+}
+function setMatchEvent(matchId, eventId) {
+  const m=matches.find(m=>m.id===matchId);
+  if(m){ m.eventId=eventId||null; persistState(); broadcastState(); }
+  updateEventsNeededInfo();
+}
+
+// ── Programme tab match list (no score inputs) ──
+function renderMatches() {
+  const el = document.getElementById('matches-list');
+  document.getElementById('matches-count').textContent = matches.length?`(${matches.length})`:'';
+  if(!matches.length){
+    el.innerHTML=`<div class="empty-state"><div class="es-icon">📋</div><p>Aucun match planifié.</p></div>`;
+    return;
+  }
+  const grouped={};
+  matches.forEach((m,i)=>{
+    const key=m.champGroup||m.eventId||'__free__';
+    if(!grouped[key]) grouped[key]=[];
+    grouped[key].push({m,i});
+  });
+  const isChamp=tournamentFormat==='championship'&&matches.some(m=>m.champGroup);
+  let html='';
+  Object.entries(grouped).forEach(([key,items])=>{
+    if(isChamp&&key!=='__free__'){
+      const ev=getEvent(key);
+      if(ev) html+=`<div class="champ-group-header">${ev.icon} ${esc(ev.name)} <span style="font-size:11px;opacity:.7;font-family:Inter;font-weight:400;margin-left:8px">${items.length} match${items.length>1?'s':''}</span></div>`;
+    }
+    items.forEach(({m,i})=>{ html+=renderMatchRow(m,i); });
+  });
+  el.innerHTML=html;
+}
+
+function renderMatchRow(m, i) {
+  const ev=m.eventId?getEvent(m.eventId):null;
+  const done=isMatchDone(m);
+  const winners=matchWinners(m);
+  const statusColor={pending:'var(--border)',ongoing:'var(--orange)',done:'var(--green)'}[m.status||'pending'];
+  const statusLabel={pending:'⏳',ongoing:'▶️',done:'✅'}[m.status||'pending'];
+  const scoreStr=m.teams.map(tid=>{const sc=m.scores?m.scores[tid]:null;return sc!==null?sc:'—';}).join(' : ');
+
+  return `
+  <div class="match-card" data-match="${m.id}" style="border-left:3px solid ${statusColor}">
+    <div class="match-num ${done?'done':''}">${done?'✓':i+1}</div>
+    <div style="min-width:155px;flex:0 0 155px">
+      <select class="select" style="font-size:11px;padding:4px 6px;margin-bottom:4px" onchange="setMatchEvent('${m.id}',this.value)">
+        <option value="">— Épreuve —</option>
+        ${EVENTS.map(e=>`<option value="${e.id}"${m.eventId===e.id?' selected':''}>${e.icon} ${esc(e.name)}</option>`).join('')}
+      </select>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        ${ev?`<span class="badge ${CAT_BADGE[ev.cat]||'badge-prec'}" style="font-size:9px">${CAT_LABELS[ev.cat]}</span>`:''}
+        ${m.terrain?`<span class="badge" style="background:var(--blue-light);color:var(--blue);font-size:9px">📍${esc(m.terrain)}</span>`:''}
+        ${m.slot?`<span class="badge" style="background:#F3E5F5;color:#6A1B9A;font-size:9px">⏰${m.slot}</span>`:''}
+      </div>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap">
+      ${m.teams.map(tid=>{
+        const t=getTeam(tid);
+        const isW=winners.includes(tid)&&winners.length===1;
+        return `<span style="font-size:12px;font-weight:${isW?700:500};color:${isW?t.color:'var(--text)'}"><span class="dot" style="background:${t.color}"></span> ${esc(t.name)}</span>`;
+      }).join('<span style="color:var(--muted);margin:0 4px">vs</span>')}
+    </div>
+    <div style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px;flex-shrink:0">${scoreStr}</div>
+    <span style="font-size:14px;flex-shrink:0" title="${{pending:'En attente',ongoing:'En cours',done:'Terminé'}[m.status||'pending']}">${statusLabel}</span>
+    <div style="display:flex;gap:4px;flex-shrink:0">
+      <button class="btn btn-sm btn-danger btn-icon" onclick="deleteMatch('${m.id}')">×</button>
+    </div>
+  </div>`;
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  PLANNING GRID
+// ═══════════════════════════════════════════════════════
+function detectConflicts() {
+  const conflictIds=new Set();
+  const bySlotTeam={};
+  matches.forEach(m=>{
+    if(!m.slot) return;
+    (m.teams||[]).forEach(tid=>{
+      const key=m.slot+'__'+tid;
+      if(!bySlotTeam[key]) bySlotTeam[key]=[];
+      bySlotTeam[key].push(m.id);
+    });
+  });
+  Object.values(bySlotTeam).forEach(arr=>{ if(arr.length>1) arr.forEach(id=>conflictIds.add(id)); });
+  const bySlotTer={};
+  matches.forEach(m=>{
+    if(!m.slot||!m.terrain) return;
+    const key=m.slot+'__'+m.terrain;
+    if(!bySlotTer[key]) bySlotTer[key]=[];
+    bySlotTer[key].push(m.id);
+  });
+  Object.values(bySlotTer).forEach(arr=>{ if(arr.length>1) arr.forEach(id=>conflictIds.add(id)); });
+  return conflictIds;
+}
+
+function renderPlanningGrid() {
+  const el=document.getElementById('planning-grid');
+  const confEl=document.getElementById('conflicts-box');
+  const withSlot=matches.filter(m=>m.slot);
+  if(!withSlot.length){
+    el.innerHTML='<div class="text-muted text-sm text-center" style="padding:18px">Aucun créneau assigné. Utilisez "Auto-planifier".</div>';
+    confEl.style.display='none'; return;
+  }
+  const conflictIds=detectConflicts();
+  confEl.style.display=conflictIds.size>0?'block':'none';
+  if(conflictIds.size>0) confEl.innerHTML=`⚠️ <strong>${conflictIds.size} conflit${conflictIds.size>1?'s':''}</strong> détecté${conflictIds.size>1?'s':''}.`;
+  const slots=[...new Set(withSlot.map(m=>m.slot))].sort();
+  const ters=[...new Set(withSlot.map(m=>m.terrain||'—'))].sort();
+  let html=`<table class="planning-table"><thead><tr><th style="min-width:52px">Créneau</th>${ters.map(t=>`<th>📍${esc(t)}</th>`).join('')}</tr></thead><tbody>`;
+  slots.forEach(slot=>{
+    html+=`<tr><td class="time-cell">⏰<br>${slot}</td>`;
+    ters.forEach(ter=>{
+      const ms=withSlot.filter(m=>m.slot===slot&&(m.terrain||'—')===ter);
+      if(!ms.length){ html+=`<td></td>`; return; }
+      html+=`<td>`;
+      ms.forEach(m=>{
+        const ev=m.eventId?getEvent(m.eventId):null;
+        const isCflt=conflictIds.has(m.id);
+        const t0=getTeam(m.teams[0]);
+        const label=m.format==='multi'?`${m.teams.length} équipes`:m.teams.map(tid=>getTeam(tid).name).join(' vs ');
+        html+=`<div class="slot-match${isCflt?' slot-conflict':''}" style="background:${t0.color}20;border-left:3px solid ${t0.color}">
+          <div style="font-weight:700;color:var(--blue);font-size:10px">${label}</div>
+          ${ev?`<div style="color:var(--muted);font-size:9px">${ev.icon} ${esc(ev.name)}</div>`:''}
+          ${isCflt?`<div style="color:var(--red);font-size:9px">⚠️ Conflit</div>`:''}
+        </div>`;
+      });
+      html+=`</td>`;
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table>`;
+  el.innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════
+//  EVENTS LIBRARY
+// ═══════════════════════════════════════════════════════
+function renderEventsLibrary() {
+  const n = teams.length;
+  document.getElementById('events-library').innerHTML = EVENTS.map(ev => {
+    const minT=ev.minTeams||2, maxT=ev.maxTeams||99;
+    const tooFew=n>0&&n<minT;
+    const isMulti=ev.multiTeamOk&&n>=minT&&n<=maxT;
+    let teamsLabel = maxT>=99?'2+ équipes':maxT===2?'2 équipes':isMulti?`${minT}–${maxT} ✓`:`${minT}–${maxT} équipes`;
+    const incompatMsg = tooFew ? `<div style="background:var(--red-light);color:var(--red);font-size:10px;font-weight:600;padding:4px 10px 8px">⚠️ Nécessite ${minT}+ équipes (vous en avez ${n})</div>` : '';
+    return `
+    <div class="event-card${tooFew?' incompatible':''}" id="evcard-${ev.id}"
+      onclick="${tooFew?`showToast('Il faut au moins ${minT} équipes','error')`:`toggleEventSelect('${ev.id}')`}">
+      <div class="event-teams-badge${isMulti?' multi':''}">${isMulti?'👥 Multi':teamsLabel}</div>
+      <div class="event-header">
+        <div class="event-icon">${ev.icon}</div>
+        <div style="flex:1;padding-right:64px">
+          <div class="event-title">${esc(ev.name)}</div>
+          <div class="event-badges">
+            <span class="badge ${CAT_BADGE[ev.cat]||'badge-prec'}">${CAT_LABELS[ev.cat]}</span>
+            <span class="badge ${ENV_BADGE[ev.env]||'badge-both'}">${ENV_LABELS[ev.env]}</span>
+            <span class="badge" style="background:#F5F5F5;color:#555">⏱ ${ev.dur}</span>
+          </div>
+        </div>
+      </div>
+      <div class="event-body">${esc(ev.desc)}</div>
+      ${incompatMsg}
+      <div class="event-footer" onclick="event.stopPropagation()">
+        <button class="btn btn-ghost btn-sm" onclick="showRules('${ev.id}')">📜 Règles</button>
+        <button class="btn btn-ghost btn-sm" onclick="downloadEventRulesPDF('${ev.id}')">📄 PDF</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleEventSelect(id) {
+  const card=document.getElementById('evcard-'+id);
+  if(!card||card.classList.contains('incompatible')) return;
+  card.classList.toggle('selected');
+  updateFormatInfo();
+}
+function randomAssign() {
+  if(!matches.length){ showToast("Générez d'abord les matchs",'error'); return; }
+  const pool=[...EVENTS];
+  for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]; }
+  matches.forEach((m,i)=>{ m.eventId=pool[i%pool.length].id; });
+  renderMatches(); persistState(); broadcastState();
+  showToast('Épreuves assignées aléatoirement ✓','success');
+}
+function saveCustomEvent() {
+  const name=document.getElementById('ce-name').value.trim();
+  if(!name){ showToast('Donnez un nom','error'); return; }
+  EVENTS.push({
+    id:'custom_'+uid(), icon:'⭐', name,
+    cat:document.getElementById('ce-cat').value,
+    env:document.getElementById('ce-env').value,
+    dur:document.getElementById('ce-dur').value||'15 min',
+    desc:document.getElementById('ce-desc').value,
+    rules:document.getElementById('ce-rules').value.split('\n').filter(r=>r.trim()),
+    scoring:document.getElementById('ce-scoring').value,
+    minTeams:parseInt(document.getElementById('ce-min').value)||2,
+    maxTeams:parseInt(document.getElementById('ce-max').value)||2,
+    multiTeamOk:document.getElementById('ce-multi').checked
+  });
+  closeModal('custom-event-modal'); renderEventsLibrary();
+  showToast('Épreuve ajoutée ✓','success');
+}
+function showRules(eventId) {
+  const ev=EVENTS.find(e=>e.id===eventId); if(!ev) return;
+  currentRulesEvent=ev;
+  document.getElementById('rules-modal-title').textContent=ev.icon+' '+ev.name;
+  document.getElementById('rules-modal-body').innerHTML=`
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:11px">
+      <span class="badge ${CAT_BADGE[ev.cat]||'badge-prec'}">${CAT_LABELS[ev.cat]}</span>
+      <span class="badge ${ENV_BADGE[ev.env]||'badge-both'}">${ENV_LABELS[ev.env]}</span>
+      <span class="badge" style="background:#F5F5F5;color:#555">⏱ ${ev.dur}</span>
+      <span class="badge" style="background:var(--blue-light);color:var(--blue)">${ev.minTeams||2}–${(ev.maxTeams||2)>=99?'∞':ev.maxTeams||2} équipes</span>
+      ${ev.multiTeamOk?`<span class="badge" style="background:var(--green-light);color:var(--green)">👥 Multi</span>`:''}
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:13px">${esc(ev.desc)}</p>
+    <div style="font-family:'Bebas Neue';font-size:15px;color:var(--blue);letter-spacing:1px;margin-bottom:7px">RÈGLES</div>
+    <ul style="padding-left:17px">${ev.rules.map(r=>`<li style="font-size:13px;margin-bottom:5px;line-height:1.5">${esc(r)}</li>`).join('')}</ul>
+    <div style="background:var(--green-light);border-radius:var(--r);padding:9px 13px;margin-top:13px">
+      <strong style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:.5px">🏆 Score</strong>
+      <p style="font-size:12px;color:var(--text);margin-top:2px">${esc(ev.scoring)}</p>
+    </div>`;
+  openModal('rules-modal');
+}
+
+// ═══════════════════════════════════════════════════════
+//  SCORES TAB — saisie rapide avec statut
+// ═══════════════════════════════════════════════════════
+function setScoreFilter(f) {
+  scoreFilter = f;
+  ['all','pending','ongoing','done'].forEach(k => {
+    const b=document.getElementById('sf-'+k);
+    if(b) b.className='btn btn-sm '+(k===f?'btn-primary':'btn-ghost');
+  });
+  renderScoresTab();
+}
+
+function setMatchStatus(id, status) {
+  const m=matches.find(m=>m.id===id); if(!m) return;
+  m.status=status;
+  persistState(); broadcastState();
+  renderScoresTab();
+  if(document.getElementById('scoreboard-view').classList.contains('open')) updateScoreboard();
+}
+
+function renderScoresTab() {
+  const el=document.getElementById('scores-list'); if(!el) return;
+  const sub=document.getElementById('scores-sub');
+  const done=matches.filter(m=>m.status==='done').length;
+  const ongoing=matches.filter(m=>m.status==='ongoing').length;
+  const pending=matches.filter(m=>!m.status||m.status==='pending').length;
+  if(sub) sub.textContent=`${matches.length} matchs · ✅ ${done} terminés · ▶️ ${ongoing} en cours · ⏳ ${pending} en attente`;
+  let filtered=matches;
+  if(scoreFilter==='pending')  filtered=matches.filter(m=>!m.status||m.status==='pending');
+  if(scoreFilter==='ongoing')  filtered=matches.filter(m=>m.status==='ongoing');
+  if(scoreFilter==='done')     filtered=matches.filter(m=>m.status==='done');
+  const countEl=document.getElementById('scores-filter-count');
+  if(countEl) countEl.textContent=`${filtered.length} match${filtered.length!==1?'s':''}`;
+  if(!matches.length){
+    el.innerHTML=`<div class="empty-state"><div class="es-icon">🎯</div><p>Aucun match généré.<br>Allez dans l'onglet Programme.</p></div>`;
+    return;
+  }
+  if(!filtered.length){
+    el.innerHTML=`<div class="empty-state"><div class="es-icon">🔍</div><p>Aucun match dans cette catégorie.</p></div>`;
+    return;
+  }
+  const grouped={};
+  filtered.forEach(m=>{
+    const key=m.champGroup||m.eventId||'__free__';
+    if(!grouped[key]) grouped[key]=[];
+    grouped[key].push(m);
+  });
+  const isChamp=tournamentFormat==='championship'&&matches.some(m=>m.champGroup);
+  let html='';
+  Object.entries(grouped).forEach(([key,items])=>{
+    if(isChamp&&key!=='__free__'){
+      const ev=getEvent(key);
+      if(ev) html+=`<div class="champ-group-header">${ev.icon} ${esc(ev.name)} <span style="font-size:11px;opacity:.7;font-family:Inter;font-weight:400;margin-left:8px">${items.length} match${items.length>1?'s':''}</span></div>`;
+    }
+    items.forEach(m=>{ html+=renderScoreCard(m); });
+  });
+  el.innerHTML=html;
+}
+
+function renderScoreCard(m) {
+  const ev=m.eventId?getEvent(m.eventId):null;
+  const st=m.status||'pending';
+  const winners=isMatchDone(m)?matchWinners(m):[];
+  const statusBtns=`
+    <div style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="status-pill ${st==='pending'?'ongoing':'pending'}" onclick="setMatchStatus('${m.id}','${st==='pending'?'ongoing':'pending'}')">
+        ${st==='pending'?'▶️ Démarrer':'⏹ Annuler'}
+      </button>
+      ${st!=='pending'?`<button class="status-pill done" onclick="setMatchStatus('${m.id}','${st==='done'?'ongoing':'done'}')">
+        ${st==='done'?'↩ Rouvrir':'✅ Terminer'}</button>`:''}
+    </div>`;
+
+  // Build score inputs grid — works for 2 or N teams
+  const scoreGrid=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(${m.teams.length<=2?'160':'130'}px,1fr));gap:8px;margin-bottom:10px">
+      ${m.teams.map(tid=>{
+        const t=getTeam(tid);
+        const sc=m.scores?m.scores[tid]??'':'';
+        const isW=winners.includes(tid)&&winners.length===1;
+        return `<div style="background:${t.color}12;border:1.5px solid ${isW?t.color:t.color+'44'};border-radius:var(--r);padding:9px 11px">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px">
+            <span class="dot" style="background:${t.color}"></span>
+            <span style="font-size:12px;font-weight:600;color:${isW?t.color:'var(--text)'}">${esc(t.name)}${isW?' 🏆':''}</span>
+          </div>
+          ${t.players.length?`<div style="font-size:9px;color:var(--muted);margin-bottom:5px">${t.players.slice(0,3).map(p=>esc(p)).join(', ')}${t.players.length>3?'…':''}</div>`:''}
+          <input type="number" min="0" value="${sc}" placeholder="—"
+            style="width:100%;text-align:center;border:1.5px solid ${t.color}66;border-radius:8px;font-size:${m.teams.length<=2?'22':'18'}px;font-weight:700;padding:6px;background:#fff;outline:none"
+            ${st==='done'?'readonly ':''}
+            oninput="setScore('${m.id}','${tid}',this.value)">
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  return `
+  <div class="score-card status-${st}">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <div style="flex:1;display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+        ${ev?`<span style="font-size:14px">${ev.icon}</span><span style="font-size:12px;font-weight:600;color:var(--blue)">${esc(ev.name)}</span>`:'<span style="font-size:12px;color:var(--muted)">Épreuve non définie</span>'}
+        ${m.teams.length>2?`<span class="badge" style="background:var(--green-light);color:var(--green);font-size:9px">👥 ${m.teams.length} équipes</span>`:''}
+        ${m.terrain?`<span class="badge" style="background:var(--blue-light);color:var(--blue);font-size:9px">📍${esc(m.terrain)}</span>`:''}
+        ${m.slot?`<span class="badge" style="background:#F3E5F5;color:#6A1B9A;font-size:9px">⏰${m.slot}</span>`:''}
+      </div>
+      <span class="status-pill ${st}" style="cursor:default">${st==='pending'?'⏳ En attente':st==='ongoing'?'▶️ En cours':'✅ Terminé'}</span>
+    </div>
+    ${scoreGrid}
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+      ${statusBtns}
+      <button class="btn btn-ghost btn-sm" onclick="openArbitre('${m.id}')">⚖️ Vue arbitre</button>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  COMPUTE STATS — unified for duel + multi
+// ═══════════════════════════════════════════════════════
+function computeStats() {
+  const stats={};
+  teams.forEach(t=>{
+    stats[t.id]={wins:0,losses:0,draws:0,pts:0,scores:[],
+      catStats:{prec:{w:0,l:0},hab:{w:0,l:0},cg:{w:0,l:0},ref:{w:0,l:0},eq:{w:0,l:0}}};
+  });
+
+  matches.forEach(m=>{
+    if(!isMatchDone(m)) return;
+    const ev=m.eventId?getEvent(m.eventId):null;
+    const cat=ev?ev.cat:'prec';
+    const winners=matchWinners(m);
+    const isDraw=winners.length>1;
+
+    m.teams.forEach(tid=>{
+      if(!stats[tid]) return;
+      const sc=Number(m.scores[tid]||0);
+      stats[tid].pts+=sc;
+      stats[tid].scores.push(sc);
+      if(isDraw){
+        stats[tid].draws++;
+      } else if(winners.includes(tid)){
+        stats[tid].wins++;
+        if(stats[tid].catStats[cat]) stats[tid].catStats[cat].w++;
+      } else {
+        stats[tid].losses++;
+        if(stats[tid].catStats[cat]) stats[tid].catStats[cat].l++;
+      }
+    });
+  });
+
+  return teams.map(t=>{
+    const s=stats[t.id];
+    // Only sum bonus points for existing categories
+    const bonusTotal = bonusCats.reduce((sum, c) => sum + Number((bonusPoints[t.id]||{})[c.id]||0), 0);
+    const avg=s.scores.length?s.scores.reduce((a,b)=>a+b,0)/s.scores.length:0;
+    return{...t,...s,avg,bonusTotal,totalWithBonus:s.pts+bonusTotal};
+  }).sort((a,b)=>b.wins-a.wins||b.totalWithBonus-a.totalWithBonus);
+}
+
+// ═══════════════════════════════════════════════════════
+//  RANKING — per-team + per-game + highlights
+// ═══════════════════════════════════════════════════════
+function renderRanking() {
+  const el=document.getElementById('ranking-content');
+  const played=matches.filter(m=>isMatchDone(m));
+  if(!played.length){
+    el.innerHTML=`<div class="empty-state"><div class="es-icon">🏆</div><p>Saisissez des scores dans l'onglet Scores.</p></div>`;
+    return;
+  }
+  const sorted=computeStats();
+  const pOrder=[1,0,2], barH={0:100,1:78,2:60};
+
+  // Podium
+  let html=`<div class="podium">${pOrder.filter(r=>sorted[r]).map(r=>{
+    const t=sorted[r];
+    return `<div class="podium-block">
+      <div style="font-size:${r===0?'26px':'20px'}">${MEDAL[r]}</div>
+      <div style="font-family:'Bebas Neue';font-size:${r===0?'14px':'12px'};color:#fff;text-align:center;max-width:96px">${esc(t.name)}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.5)">${t.wins}V · ${t.losses}D · ${t.draws}N</div>
+      <div class="podium-bar" style="background:${MEDAL_COLS[r]};height:${barH[r]}px">${r+1}</div>
+    </div>`;
+  }).join('')}</div>`;
+
+  // Highlights
+  const mostWins  = [...sorted].sort((a,b)=>b.wins-a.wins)[0];
+  const mostLoss  = [...sorted].sort((a,b)=>b.losses-a.losses)[0];
+  const bestAvg   = [...sorted].sort((a,b)=>b.avg-a.avg)[0];
+  const mostDraws = [...sorted].sort((a,b)=>b.draws-a.draws)[0];
+  const mostBonus = [...sorted].sort((a,b)=>b.bonusTotal-a.bonusTotal)[0];
+  const mostGames = [...sorted].sort((a,b)=>b.scores.length-a.scores.length)[0];
+
+  html+=`<div class="highlight-grid mb-16">
+    <div class="highlight-card"><div class="highlight-icon">🥇</div><div>
+      <div class="highlight-label">Plus de victoires</div>
+      <div class="highlight-value" style="color:var(--orange)">${esc(mostWins.name)}</div>
+      <div class="highlight-sub">${mostWins.wins} victoire${mostWins.wins!==1?'s':''}</div></div></div>
+    <div class="highlight-card"><div class="highlight-icon">😔</div><div>
+      <div class="highlight-label">Plus de défaites</div>
+      <div class="highlight-value" style="color:var(--red)">${esc(mostLoss.name)}</div>
+      <div class="highlight-sub">${mostLoss.losses} défaite${mostLoss.losses!==1?'s':''}</div></div></div>
+    <div class="highlight-card"><div class="highlight-icon">📊</div><div>
+      <div class="highlight-label">Meilleure moyenne</div>
+      <div class="highlight-value" style="color:var(--green)">${esc(bestAvg.name)}</div>
+      <div class="highlight-sub">${bestAvg.avg.toFixed(1)} pts/match</div></div></div>
+    <div class="highlight-card"><div class="highlight-icon">🤝</div><div>
+      <div class="highlight-label">Plus de nuls</div>
+      <div class="highlight-value" style="color:var(--muted)">${esc(mostDraws.name)}</div>
+      <div class="highlight-sub">${mostDraws.draws} nul${mostDraws.draws!==1?'s':''}</div></div></div>
+    <div class="highlight-card"><div class="highlight-icon">⭐</div><div>
+      <div class="highlight-label">Plus de bonus</div>
+      <div class="highlight-value" style="color:var(--orange)">${esc(mostBonus.name)}</div>
+      <div class="highlight-sub">+${mostBonus.bonusTotal} pts</div></div></div>
+    <div class="highlight-card"><div class="highlight-icon">🎮</div><div>
+      <div class="highlight-label">Plus actif</div>
+      <div class="highlight-value" style="color:var(--blue)">${esc(mostGames.name)}</div>
+      <div class="highlight-sub">${mostGames.scores.length} match${mostGames.scores.length!==1?'s':''}</div></div></div>
+  </div>`;
+
+  // General ranking table
+  html+=`<div class="card mb-16"><div style="overflow-x:auto"><table class="rank-table">
+    <thead><tr><th>#</th><th>Équipe</th><th>V</th><th>D</th><th>N</th><th>Pts sport</th><th>Bonus</th><th>Total</th><th>Moy/match</th><th>Joués</th></tr></thead>
+    <tbody>${sorted.map((t,i)=>`<tr>
+      <td style="font-weight:700;color:${i<3?MEDAL_COLS[i]:'#999'};font-size:${i===0?'17px':'12px'}">${i<3?MEDAL[i]:i+1}</td>
+      <td><span class="dot" style="background:${t.color}"></span> <strong>${esc(t.name)}</strong></td>
+      <td style="color:var(--green);font-weight:700">${t.wins}</td>
+      <td style="color:var(--red);font-weight:700">${t.losses}</td>
+      <td style="color:var(--muted)">${t.draws}</td>
+      <td style="font-weight:700;color:var(--blue)">${t.pts}</td>
+      <td style="color:var(--orange);font-weight:700">${t.bonusTotal>0?'+'+t.bonusTotal:'—'}</td>
+      <td style="font-weight:700;color:var(--blue)">${t.totalWithBonus}</td>
+      <td style="color:var(--muted)">${t.avg.toFixed(1)}</td>
+      <td style="color:var(--muted)">${t.scores.length}</td>
+    </tr>`).join('')}</tbody>
+  </table></div></div>`;
+
+  // Performance by category
+  const cats=Object.keys(CAT_LABELS);
+  const hasCatData=played.some(m=>m.eventId&&getEvent(m.eventId));
+  if(hasCatData){
+    html+=`<div class="card mb-16">
+      <h3 style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px;margin-bottom:11px">Performances par catégorie</h3>
+      <div style="overflow-x:auto"><table class="rank-table">
+        <thead><tr><th>Équipe</th>${cats.map(c=>`<th>${CAT_LABELS[c]}</th>`).join('')}</tr></thead>
+        <tbody>${sorted.map(t=>`<tr>
+          <td><span class="dot" style="background:${t.color}"></span> <strong>${esc(t.name)}</strong></td>
+          ${cats.map(c=>{
+            const s=t.catStats[c]||{w:0,l:0}; const tot=s.w+s.l;
+            if(!tot) return '<td style="color:var(--muted)">—</td>';
+            const pct=Math.round(s.w/tot*100);
+            return `<td style="font-size:11px"><span style="color:var(--green);font-weight:700">${s.w}V</span>/<span style="color:var(--red)">${s.l}D</span> <span style="font-size:9px;color:var(--muted)">(${pct}%)</span></td>`;
+          }).join('')}
+        </tr>`).join('')}</tbody>
+      </table></div>
+    </div>`;
+  }
+
+  // ── Classement par épreuve ──────────────────────────────
+  const eventsWithResults=[...new Set(played.filter(m=>m.eventId).map(m=>m.eventId))];
+  if(eventsWithResults.length){
+    html+=`<div class="card mb-16">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <h3 style="font-family:'Bebas Neue';font-size:16px;color:var(--blue);letter-spacing:1px;margin:0">Classement par épreuve</h3>
+        <button class="btn btn-ghost btn-sm" onclick="downloadRankingPDF()">📄 PDF Classement</button>
+      </div>`;
+
+    eventsWithResults.forEach(evId=>{
+      const ev=getEvent(evId);
+      if(!ev) return;
+      const evMatches=played.filter(m=>m.eventId===evId);
+
+      // Build per-event ranking: sum scores, count wins/losses per team
+      const evStats={};
+      teams.forEach(t=>{ evStats[t.id]={pts:0,wins:0,losses:0,draws:0,played:0}; });
+
+      evMatches.forEach(m=>{
+        const winners=matchWinners(m);
+        const isDraw=winners.length>1;
+        m.teams.forEach(tid=>{
+          if(!evStats[tid]) return;
+          evStats[tid].pts+=Number(m.scores[tid]||0);
+          evStats[tid].played++;
+          if(isDraw) evStats[tid].draws++;
+          else if(winners.includes(tid)) evStats[tid].wins++;
+          else evStats[tid].losses++;
+        });
+      });
+
+      // Sort teams for this event
+      const evSorted=teams
+        .filter(t=>evStats[t.id]&&evStats[t.id].played>0)
+        .sort((a,b)=>{
+          const sA=evStats[a.id], sB=evStats[b.id];
+          return sB.wins-sA.wins || sB.pts-sA.pts;
+        });
+
+      if(!evSorted.length) return;
+
+      html+=`<div style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:20px">${ev.icon}</span>
+          <div>
+            <div style="font-family:'Bebas Neue';font-size:14px;color:var(--blue);letter-spacing:.5px">${esc(ev.name)}</div>
+            <div style="display:flex;gap:4px;margin-top:2px">
+              <span class="badge ${CAT_BADGE[ev.cat]||'badge-prec'}" style="font-size:9px">${CAT_LABELS[ev.cat]}</span>
+              <span class="badge" style="background:var(--neutral);color:var(--muted);font-size:9px">${evMatches.length} match${evMatches.length>1?'s':''}</span>
+            </div>
+          </div>
+        </div>
+        <table class="rank-table" style="font-size:11px">
+          <thead><tr><th>#</th><th>Équipe</th><th>V</th><th>D</th><th>N</th><th>Pts</th><th>Matchs</th></tr></thead>
+          <tbody>${evSorted.map((t,ri)=>{
+            const s=evStats[t.id];
+            return `<tr>
+              <td style="font-weight:700;color:${ri<3?MEDAL_COLS[ri]:'#999'}">${ri<3?MEDAL[ri]:ri+1}</td>
+              <td><span class="dot" style="background:${t.color}"></span> <strong>${esc(t.name)}</strong></td>
+              <td style="color:var(--green);font-weight:700">${s.wins}</td>
+              <td style="color:var(--red)">${s.losses}</td>
+              <td style="color:var(--muted)">${s.draws}</td>
+              <td style="font-weight:700;color:var(--blue)">${s.pts}</td>
+              <td style="color:var(--muted)">${s.played}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>`;
+    });
+
+    html+=`</div>`;
+  }
+
+  el.innerHTML=html;
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  SCOREBOARD (TV view)
+// ═══════════════════════════════════════════════════════
+function updateScoreboard() {
+  const rankEl=document.getElementById('sb-ranking-list');
+  const liveEl=document.getElementById('sb-live-matches');
+  if(!rankEl||!liveEl) return;
+  const anyDone=matches.some(m=>isMatchDone(m));
+  if(!anyDone){
+    rankEl.innerHTML='<div style="color:rgba(255,255,255,.3);font-size:12px">En attente de scores…</div>';
+  } else {
+    const sorted=computeStats();
+    rankEl.innerHTML=sorted.map((t,i)=>`
+      <div class="sb-rank-row">
+        <div class="sb-rank-pos" style="color:${i<3?MEDAL_COLS[i]:'rgba(255,255,255,.3)'}">${i<3?MEDAL[i]:i+1}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex:1">
+          <span class="dot" style="background:${t.color}"></span>
+          <div class="sb-rank-name">${esc(t.name)}</div>
+        </div>
+        <div class="sb-rank-stat">${t.totalWithBonus}</div>
+        <div class="sb-rank-wins">${t.wins}V</div>
+      </div>`).join('');
+  }
+  const live=matches.filter(m=>m.status==='ongoing');
+  if(!live.length){
+    liveEl.innerHTML='<div style="color:rgba(255,255,255,.3);font-size:12px">Aucun match en cours…<br><span style="font-size:10px">Passez un match en statut "▶️ En cours" depuis l\'onglet Scores.</span></div>';
+    return;
+  }
+  const isArb=arbCurrentMatch?arbCurrentMatch.id:null;
+  liveEl.innerHTML=live.slice(-5).map(m=>{
+    const ev=m.eventId?getEvent(m.eventId):null;
+    const timerTxt=(isArb===m.id)?fmtTime(arbTimer.remaining):'';
+    const timerCls=(isArb===m.id)?(arbTimer.remaining<=60?'danger':arbTimer.running?'active':''):'';
+    if(m.teams.length>2){
+      return `<div class="sb-match-live">
+        <div class="sb-match-title">${ev?ev.icon+' '+esc(ev.name):'Multi-équipes'}${m.terrain?' · 📍'+esc(m.terrain):''}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+          ${m.teams.map(tid=>{
+            const t=getTeam(tid); const sc=m.scores?m.scores[tid]:null;
+            return `<div style="text-align:center;background:rgba(255,255,255,.07);border-radius:8px;padding:6px 12px">
+              <div style="color:${t.color};font-size:11px;font-weight:700">${esc(t.name)}</div>
+              <div style="font-family:'Bebas Neue';font-size:28px;color:#fff">${sc??'—'}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        ${timerTxt?`<div class="sb-timer ${timerCls}">${timerTxt}</div>`:''}
+      </div>`;
+    }
+    const tA=getTeam(m.teams[0]),tB=getTeam(m.teams[1]);
+    const sA=m.scores?m.scores[m.teams[0]]:null, sB=m.scores?m.scores[m.teams[1]]:null;
+    return `<div class="sb-match-live">
+      <div class="sb-match-title">${ev?ev.icon+' '+esc(ev.name):'Match'}${m.terrain?' · 📍'+esc(m.terrain):''}${m.slot?' · ⏰'+m.slot:''}</div>
+      <div class="sb-match-teams">
+        <div class="sb-team-name" style="color:${tA.color}">${esc(tA.name)}</div>
+        <div class="sb-score">${sA??'—'} : ${sB??'—'}</div>
+        <div class="sb-team-name" style="color:${tB.color}">${esc(tB.name)}</div>
+      </div>
+      ${timerTxt?`<div class="sb-timer ${timerCls}">${timerTxt}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  ARBITRE VIEW — N teams
+// ═══════════════════════════════════════════════════════
+function openArbitre(matchId) {
+  const sel=document.getElementById('arb-match-select');
+  sel.innerHTML=`<option value="">— Choisir un match —</option>`+
+    matches.map(m=>{
+      const ev=m.eventId?getEvent(m.eventId):null;
+      const label=m.teams.length>2
+        ?`👥 ${ev?ev.name:'Multi'} (${m.teams.length} équipes)`
+        :`${getTeam(m.teams[0]).name} vs ${getTeam(m.teams[1]||m.teams[0]).name}${ev?' — '+ev.name:''}`;
+      return `<option value="${m.id}"${m.id===matchId?' selected':''}>${label}</option>`;
+    }).join('');
+  if(matchId) arbitreSelectMatch(matchId);
+  document.getElementById('arbitre-view').classList.add('open');
+}
+function closeArbitre() { document.getElementById('arbitre-view').classList.remove('open'); }
+
+function arbitreSelectMatch(id) {
+  const m=matches.find(m=>m.id===id);
+  arbCurrentMatch=m||null;
+  const scoreBlock=document.getElementById('arb-score-block');
+  if(!m||!scoreBlock){ return; }
+
+  if(m.teams.length<=2){
+    // Classic 2-team UI
+    const tA=getTeam(m.teams[0]), tB=getTeam(m.teams[1]||m.teams[0]);
+    document.getElementById('arb-team-a-name').textContent=tA.name;
+    document.getElementById('arb-team-b-name').textContent=tB.name;
+    document.getElementById('arb-score-a').textContent=m.scores??(m.scores[m.teams[0]]??0);
+    document.getElementById('arb-score-b').textContent=m.scores??(m.scores[m.teams[1]]??0);
+    document.getElementById('arb-score-a').textContent=m.scores&&m.scores[m.teams[0]]!==null?(m.scores[m.teams[0]]??0):0;
+    document.getElementById('arb-score-b').textContent=m.scores&&m.teams[1]&&m.scores[m.teams[1]]!==null?(m.scores[m.teams[1]]??0):0;
+    scoreBlock.innerHTML=`
+      <span class="arb-block-label">Scores</span>
+      <div class="arb-score-row">
+        <div class="arb-score-controls">
+          <button class="arb-score-btn plus" onclick="arbScoreChange('${m.teams[0]}',1)">+</button>
+          <div class="arb-score-val" id="arb-score-a">${m.scores&&m.scores[m.teams[0]]!==null?m.scores[m.teams[0]]:0}</div>
+          <button class="arb-score-btn minus" onclick="arbScoreChange('${m.teams[0]}',-1)">−</button>
+          <div class="arb-team-lbl">${esc(tA.name)}</div>
+        </div>
+        <div style="color:rgba(255,255,255,.2);font-family:'Bebas Neue';font-size:26px">VS</div>
+        <div class="arb-score-controls">
+          <button class="arb-score-btn plus" onclick="arbScoreChange('${m.teams[1]}',1)">+</button>
+          <div class="arb-score-val" id="arb-score-b">${m.scores&&m.scores[m.teams[1]]!==null?m.scores[m.teams[1]]:0}</div>
+          <button class="arb-score-btn minus" onclick="arbScoreChange('${m.teams[1]}',-1)">−</button>
+          <div class="arb-team-lbl">${esc(tB.name)}</div>
+        </div>
+      </div>
+      <button class="arb-save-btn" onclick="arbSaveScore()">💾 Enregistrer le score</button>`;
+  } else {
+    // Multi-team UI: one row per team
+    scoreBlock.innerHTML=`
+      <span class="arb-block-label">Scores — ${m.teams.length} équipes</span>
+      ${m.teams.map(tid=>{
+        const t=getTeam(tid);
+        const sc=m.scores&&m.scores[tid]!==null?m.scores[tid]:0;
+        return `<div class="arb-multi-row">
+          <span class="arb-multi-name"><span class="dot" style="background:${t.color}"></span> ${esc(t.name)}</span>
+          <button class="arb-multi-btn minus" onclick="arbScoreChange('${tid}',-1)">−</button>
+          <div class="arb-multi-score" id="arb-sc-${tid}">${sc}</div>
+          <button class="arb-multi-btn plus" onclick="arbScoreChange('${tid}',1)">+</button>
+        </div>`;
+      }).join('')}
+      <button class="arb-save-btn" style="margin-top:10px" onclick="arbSaveScore()">💾 Enregistrer les scores</button>`;
+  }
+  arbTimerReset();
+}
+
+// arbScoreChange now works with any teamId
+function arbScoreChange(teamId, delta) {
+  if(!arbCurrentMatch) return;
+  const elId = arbCurrentMatch.teams.length<=2
+    ? (teamId===arbCurrentMatch.teams[0]?'arb-score-a':'arb-score-b')
+    : `arb-sc-${teamId}`;
+  const el=document.getElementById(elId); if(!el) return;
+  el.textContent=Math.max(0,(parseInt(el.textContent)||0)+delta);
+}
+
+function arbSaveScore() {
+  if(!arbCurrentMatch){ showToast('Sélectionnez un match','error'); return; }
+  const m=arbCurrentMatch;
+  if(!m.scores) m.scores={};
+  if(m.teams.length<=2){
+    const elA=document.getElementById('arb-score-a');
+    const elB=document.getElementById('arb-score-b');
+    if(elA) m.scores[m.teams[0]]=parseInt(elA.textContent)||0;
+    if(elB&&m.teams[1]) m.scores[m.teams[1]]=parseInt(elB.textContent)||0;
+  } else {
+    m.teams.forEach(tid=>{
+      const el=document.getElementById(`arb-sc-${tid}`);
+      if(el) m.scores[tid]=parseInt(el.textContent)||0;
+    });
+  }
+  // sync legacy
+  m.scoreA=m.scores[m.teams[0]];
+  if(m.teams[1]) m.scoreB=m.scores[m.teams[1]];
+  if(!m.status||m.status==='pending') m.status='ongoing';
+  renderMatches(); persistState(); broadcastState();
+  showToast('Score enregistré ✓','success');
+}
+
+// Timer
+function arbSetDuration(val){
+  const min=Math.max(1,Math.min(60,parseInt(val)||15));
+  arbTimer.duration=min*60;
+  if(!arbTimer.running) arbTimer.remaining=arbTimer.duration;
+  updateArbTimerDisplay();
+}
+function arbTimerStart(){
+  if(arbTimer.running) return;
+  arbTimer.running=true;
+  document.getElementById('arb-start-btn').textContent='▶ En cours…';
+  arbTimer.interval=setInterval(()=>{
+    if(arbTimer.remaining<=0){ arbTimerFinish(); return; }
+    arbTimer.remaining--; updateArbTimerDisplay(); updateScoreboard();
+  },1000);
+}
+function arbTimerPause(){
+  if(!arbTimer.running) return;
+  arbTimer.running=false; clearInterval(arbTimer.interval);
+  document.getElementById('arb-start-btn').textContent='▶ Reprendre';
+}
+function arbTimerReset(){
+  arbTimer.running=false; clearInterval(arbTimer.interval);
+  arbTimer.remaining=arbTimer.duration;
+  const btn=document.getElementById('arb-start-btn');
+  if(btn) btn.textContent='▶ Démarrer';
+  updateArbTimerDisplay();
+}
+function arbTimerFinish(){
+  arbTimer.running=false; clearInterval(arbTimer.interval); arbTimer.remaining=0;
+  updateArbTimerDisplay();
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    [0,.35,.7].forEach(d=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=880;o.type='sine';
+      g.gain.setValueAtTime(.45,ctx.currentTime+d);
+      g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+d+.5);
+      o.start(ctx.currentTime+d);o.stop(ctx.currentTime+d+.5);
+    });
+  }catch(e){}
+  showToast('⏰ Temps écoulé !','warning');
+}
+function updateArbTimerDisplay(){
+  const el=document.getElementById('arb-timer-display'); if(!el) return;
+  const pct=arbTimer.duration>0?arbTimer.remaining/arbTimer.duration:0;
+  el.textContent=fmtTime(arbTimer.remaining);
+  el.className='arb-timer-display';
+  if(arbTimer.remaining===0) el.classList.add('finished');
+  else if(pct<=.15) el.classList.add('danger');
+  else if(pct<=.33) el.classList.add('warning');
+}
+function openScoreboard(){ document.getElementById('scoreboard-view').classList.add('open'); updateScoreboard(); }
+function closeScoreboard(){ document.getElementById('scoreboard-view').classList.remove('open'); }
+
+// ═══════════════════════════════════════════════════════
+//  BONUS — fix: recompute on category deletion
+// ═══════════════════════════════════════════════════════
+function renderBonusTable(){
+  const el=document.getElementById('bonus-table');
+  if(!teams.length){ el.innerHTML='<div class="text-muted text-sm">Créez des équipes pour attribuer des bonus.</div>'; return; }
+  // Clean up bonus points for deleted categories
+  teams.forEach(t=>{
+    if(!bonusPoints[t.id]) bonusPoints[t.id]={};
+    // Remove keys for categories that no longer exist
+    Object.keys(bonusPoints[t.id]).forEach(catId=>{
+      if(!bonusCats.find(c=>c.id===catId)) delete bonusPoints[t.id][catId];
+    });
+  });
+  let html=`<div style="font-size:11px;color:var(--muted);margin-bottom:11px">Points bonus par équipe. Colonne "Bonus" visible dans le classement.</div>
+  <div style="overflow-x:auto"><table class="rank-table">
+    <thead><tr><th>Équipe</th>${bonusCats.map(c=>`<th><span style="color:${c.color}">●</span> ${esc(c.name)}</th>`).join('')}<th>Total</th></tr></thead>
+    <tbody>`;
+  teams.forEach(t=>{
+    if(!bonusPoints[t.id]) bonusPoints[t.id]={};
+    const total=bonusCats.reduce((s,c)=>s+Number(bonusPoints[t.id][c.id]||0),0);
+    html+=`<tr><td><span class="dot" style="background:${t.color}"></span> <strong>${esc(t.name)}</strong></td>`;
+    bonusCats.forEach(c=>{
+      html+=`<td><input type="number" min="0" value="${bonusPoints[t.id][c.id]||0}" class="bonus-pts-input"
+        style="border-color:${c.color}55" oninput="setBonusPoint('${t.id}','${c.id}',this.value)"></td>`;
+    });
+    html+=`<td style="font-weight:700;color:var(--orange)">${total>0?'+'+total:'—'}</td></tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  el.innerHTML=html;
+}
+function setBonusPoint(teamId,catId,val){
+  if(!bonusPoints[teamId]) bonusPoints[teamId]={};
+  bonusPoints[teamId][catId]=Math.max(0,parseFloat(val)||0);
+  persistState(); broadcastState();
+}
+function renderBonusCatsForm(){
+  document.getElementById('bonus-cats-form').innerHTML=bonusCats.map((c,i)=>`
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+      <input class="input" value="${esc(c.name)}" data-bi="${i}" data-bf="name" style="font-size:12px;flex:1">
+      <input type="color" value="${c.color}" data-bi="${i}" data-bf="color"
+        style="width:40px;height:38px;border:1.5px solid var(--border);border-radius:8px;padding:2px;cursor:pointer">
+      <button class="btn btn-danger btn-sm btn-icon" onclick="removeBonusCat(${i})">×</button>
+    </div>`).join('');
+}
+function addBonusCat(){ bonusCats.push({id:'bonus_'+uid(),name:'Nouveau bonus',color:'#607D8B'}); renderBonusCatsForm(); }
+function removeBonusCat(idx){
+  const removed=bonusCats[idx];
+  bonusCats.splice(idx,1);
+  // Clean removed cat from all teams
+  if(removed) teams.forEach(t=>{ if(bonusPoints[t.id]) delete bonusPoints[t.id][removed.id]; });
+  renderBonusCatsForm();
+}
+function saveBonusCats(){
+  document.querySelectorAll('#bonus-cats-form [data-bi]').forEach(inp=>{
+    const i=parseInt(inp.dataset.bi); if(bonusCats[i]) bonusCats[i][inp.dataset.bf]=inp.value;
+  });
+  // Cleanup: remove bonus entries for deleted categories
+  const validCatIds = new Set(bonusCats.map(c=>c.id));
+  Object.keys(bonusPoints).forEach(tid=>{
+    Object.keys(bonusPoints[tid]||{}).forEach(catId=>{
+      if(!validCatIds.has(catId)) delete bonusPoints[tid][catId];
+    });
+  });
+  closeModal('bonus-cat-modal');
+  renderBonusTable();
+  // Refresh ranking if visible so bonus totals are correct
+  if(document.getElementById('tab-ranking').classList.contains('active')) renderRanking();
+  persistState(); broadcastState();
+  showToast('Catégories mises à jour ✓','success');
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  DATA PERSISTENCE
+// ═══════════════════════════════════════════════════════
+function getState(){
+  // Serialise matches (remove non-serialisable getters)
+  const serialMatches = matches.map(m=>({
+    id:m.id, teams:m.teams, scores:m.scores, eventId:m.eventId,
+    terrain:m.terrain, slot:m.slot, format:m.format, status:m.status,
+    champGroup:m.champGroup,
+    teamA:m.teams[0], teamB:m.teams[1]||null,
+    scoreA:m.scores?m.scores[m.teams[0]]:null,
+    scoreB:m.scores&&m.teams[1]?m.scores[m.teams[1]]:null,
+  }));
+  return{teams,matches:serialMatches,terrains,bonusCats,bonusPoints,tournamentFormat,sessionCode};
+}
+
+function applyState(s, fromRemote) {
+  if(!s) return;
+  if(fromRemote){
+    if(s.matches&&matches.length){
+      const localById={};
+      matches.forEach(m=>localById[m.id]=m);
+      s.matches.forEach(rm=>{
+        rm=normaliseMatch(rm);
+        if(localById[rm.id]){
+          const lm=localById[rm.id];
+          rm.teams.forEach(tid=>{
+            if(rm.scores&&rm.scores[tid]!==null&&(lm.scores&&lm.scores[tid]===null))
+              lm.scores[tid]=rm.scores[tid];
+          });
+          if(rm.status==='done'&&lm.status!=='done') lm.status=rm.status;
+        }
+      });
+      const localIds=new Set(matches.map(m=>m.id));
+      s.matches.filter(m=>!localIds.has(m.id)).forEach(m=>matches.push(normaliseMatch(m)));
+    } else if(s.matches) { matches=s.matches.map(normaliseMatch); }
+    if(s.teams&&s.teams.length>teams.length) teams=s.teams;
+    if(s.terrains) terrains=s.terrains;
+    if(s.bonusCats) bonusCats=s.bonusCats;
+    if(s.bonusPoints){
+      Object.entries(s.bonusPoints).forEach(([tid,cats])=>{
+        if(!bonusPoints[tid]) bonusPoints[tid]={};
+        Object.assign(bonusPoints[tid],cats);
+      });
+    }
+    if(s.tournamentFormat) tournamentFormat=s.tournamentFormat;
+  } else {
+    if(s.teams)            teams=s.teams;
+    if(s.matches)          matches=s.matches.map(normaliseMatch);
+    if(s.terrains)         terrains=s.terrains;
+    if(s.bonusCats)        bonusCats=s.bonusCats;
+    if(s.bonusPoints)      bonusPoints=s.bonusPoints;
+    if(s.tournamentFormat) tournamentFormat=s.tournamentFormat;
+    if(s.sessionCode)      sessionCode=s.sessionCode;
+  }
+}
+
+function persistState(notify){
+  try{
+    localStorage.setItem(LS_KEY,JSON.stringify(getState()));
+    if(notify){
+      showToast('Sauvegardé ✓','success');
+      const el=document.getElementById('autosave-status');
+      if(el){ el.style.display='block'; el.textContent='✅ Sauvegardé le '+new Date().toLocaleString('fr-FR'); setTimeout(()=>el.style.display='none',4000); }
+    }
+  }catch(e){ showToast('Erreur localStorage','error'); }
+}
+function saveToLocalStorage(notify){ persistState(notify); }
+
+function loadFromLocalStorage(){
+  try{
+    const raw=localStorage.getItem(LS_KEY);
+    // Try new key first, fall back to old key
+    const raw2=raw||localStorage.getItem('olympiades_v3')||localStorage.getItem('olympiades_v2');
+    if(raw2) applyState(JSON.parse(raw2),false);
+  }catch(e){ console.warn('Load error',e); }
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(getState(),null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=`olympiades_${new Date().toISOString().slice(0,10)}.json`; a.click();
+  showToast('Export JSON ✓','success');
+}
+function importJSON(ev){
+  const file=ev.target.files[0]; if(!file) return;
+  if(!confirm('Importer ? Les données actuelles seront remplacées.')) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{ applyState(JSON.parse(e.target.result),false); renderAll(); persistState(); showToast('Import réussi ✓','success'); }
+    catch(err){ showToast('Fichier JSON invalide','error'); }
+  };
+  reader.readAsText(file); ev.target.value='';
+}
+function resetAll(){
+  if(!confirm('Effacer TOUTES les données ?')) return;
+  if(!confirm('Dernière confirmation ?')) return;
+  teams=[]; matches=[]; terrains=['Terrain 1','Terrain 2'];
+  bonusCats=[{id:'fairplay',name:'Fair-play',color:'#4CAF50'},{id:'creativite',name:'Créativité',color:'#9C27B0'},{id:'progres',name:'Équipe la + progressée',color:'#FF9800'}];
+  bonusPoints={}; sessionCode=null;
+  localStorage.removeItem(LS_KEY);
+  if(_fbUnsub){ _fbUnsub(); _fbUnsub=null; }
+  renderAll(); showToast('Données réinitialisées','warning');
+}
+function renderDataSummary(){
+  document.getElementById('data-summary').innerHTML=`
+    <div class="reco-item"><div class="rl">Équipes</div><div class="rv">${teams.length}</div></div>
+    <div class="reco-item"><div class="rl">Matchs</div><div class="rv">${matches.length}</div></div>
+    <div class="reco-item"><div class="rl">Scores</div><div class="rv">${matches.filter(m=>isMatchDone(m)).length}</div></div>
+    <div class="reco-item"><div class="rl">Terrains</div><div class="rv">${terrains.length}</div></div>
+    <div class="reco-item"><div class="rl">Épreuves</div><div class="rv">${EVENTS.length}</div></div>
+    <div class="reco-item"><div class="rl">Firebase</div><div class="rv">${sessionCode?'🟢':'⚪'}</div></div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  FIREBASE SYNC
+// ═══════════════════════════════════════════════════════
+function updateSyncIndicator(state,msg){
+  const el=document.getElementById('sync-indicator');
+  const txt=document.getElementById('sync-indicator-text');
+  if(!el||!txt) return;
+  el.className='info-box sync-indicator-'+state;
+  txt.innerHTML=`<span class="sync-dot ${state}"></span> ${msg}`;
+  if(state==='ok') _syncLastTs=Date.now();
+  const lastEl=document.getElementById('sync-last-update');
+  if(lastEl&&_syncLastTs) lastEl.textContent='Sync: '+new Date(_syncLastTs).toLocaleTimeString('fr-FR');
+}
+setInterval(()=>{
+  const lastEl=document.getElementById('sync-last-update');
+  if(lastEl&&_syncLastTs){
+    const s=Math.round((Date.now()-_syncLastTs)/1000);
+    lastEl.textContent=s<5?'Sync: à l\'instant':`Sync: il y a ${s}s`;
+  }
+},2000);
+
+function updateFirebaseStatus(state,msg){
+  const badge=document.getElementById('sync-status-badge');
+  if(!badge) return;
+  if(state==='ok'){ badge.textContent='🔥 '+sessionCode; badge.className='sync-badge connected'; }
+  else if(state==='err'){ badge.textContent='📡 Erreur'; badge.className='sync-badge'; }
+  else { badge.textContent='📡 '+(sessionCode||'Hors-ligne'); badge.className='sync-badge'; }
+  updateSyncIndicator(state,msg);
+}
+
+function broadcastState(){
+  if(!sessionCode||!_fbReady) return;
+  const{db,doc,setDoc,serverTimestamp}=window._firebase;
+  const payload={...getState(),_deviceId:deviceId,_ts:Date.now(),updatedAt:serverTimestamp()};
+  setDoc(doc(db,'sessions',sessionCode),payload).catch(e=>console.warn('Firebase write',e));
+}
+
+function subscribeFirebase(code){
+  if(_fbUnsub){ _fbUnsub(); _fbUnsub=null; }
+  const{db,doc,onSnapshot}=window._firebase;
+  updateFirebaseStatus('wait','🔄 Connexion à la session…');
+  _fbUnsub=onSnapshot(doc(db,'sessions',code),snap=>{
+    if(!snap.exists()){ updateFirebaseStatus('ok','✅ Session créée — en attente d\'autres appareils'); return; }
+    const data=snap.data();
+    updateFirebaseStatus('ok',`✅ Connecté · session ${code}`);
+    if(data._deviceId===deviceId) return;
+    if(data._ts&&data._ts<=_lastRemoteTs) return;
+    _lastRemoteTs=data._ts||0;
+    applyState(data,true); renderAll();
+  },err=>{ console.warn('Firebase listen',err); updateFirebaseStatus('err','❌ '+err.message); });
+}
+
+function generateSessionCode(){
+  sessionCode=Math.random().toString(36).substr(2,6).toUpperCase();
+  document.getElementById('session-code-display').textContent=sessionCode;
+  persistState(); syncDevices=[]; updateDeviceList();
+  if(_fbReady) subscribeFirebase(sessionCode);
+  else showToast('Firebase pas encore prêt','warning');
+}
+function copySessionCode(){
+  if(!sessionCode){ showToast('Générez d\'abord un code','error'); return; }
+  navigator.clipboard.writeText(sessionCode).then(()=>showToast('Code copié ✓','success')).catch(()=>showToast('Impossible de copier','error'));
+}
+function joinSession(){
+  const code=document.getElementById('join-code-input').value.trim().toUpperCase();
+  if(code.length<4){ showToast('Code invalide','error'); return; }
+  sessionCode=code;
+  document.getElementById('session-code-display').textContent=sessionCode;
+  persistState();
+  if(_fbReady){ subscribeFirebase(sessionCode); showToast('Session rejointe ✓','success'); }
+  else showToast('Firebase pas encore prêt','warning');
+}
+function updateDeviceList(){
+  const el=document.getElementById('device-list'); if(!el) return;
+  if(!sessionCode){ el.innerHTML='<div style="font-size:11px;color:rgba(255,255,255,.35)">Aucune session active</div>'; return; }
+  el.innerHTML=`<div class="device-chip self">📱 Cet appareil (${deviceId})</div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  PDF GENERATION
+// ═══════════════════════════════════════════════════════
+const PDF_BLUE=[30,58,95],PDF_ORANGE=[232,89,12],PDF_GREEN=[45,158,95],PDF_GRAY=[240,237,232];
+function pdfHeader(doc,title,sub){
+  doc.setFillColor(...PDF_BLUE);doc.rect(0,0,210,28,'F');
+  doc.setFillColor(...PDF_ORANGE);doc.rect(0,26,210,2,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(17);
+  doc.text(title,14,12);
+  if(sub){doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text(sub,14,21);}
+  doc.setTextColor(30,30,30); return 36;
+}
+function pdfFooter(doc){
+  const n=doc.internal.getNumberOfPages();
+  for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(160);doc.text(`Olympiades · Page ${i}/${n}`,14,290);doc.text(new Date().toLocaleDateString('fr-FR'),165,290);}
+}
+
+function downloadPlanningPDF(){
+  const{jsPDF}=window.jspdf; const doc=new jsPDF();
+  let y=pdfHeader(doc,'OLYMPIADES — PLANNING',`${teams.length} équipes · ${matches.length} matchs`);
+  doc.autoTable({startY:y,head:[['#','Heure','Terrain','Équipes','Score','Épreuve','Statut']],
+    body:matches.map((m,i)=>{
+      const ev=m.eventId?getEvent(m.eventId):null;
+      const teamNames=m.teams.map(tid=>getTeam(tid).name).join(' vs ');
+      const scoreStr=m.teams.map(tid=>m.scores?m.scores[tid]??'—':'—').join(' : ');
+      const st={pending:'⏳',ongoing:'▶️',done:'✅'}[m.status||'pending'];
+      return[i+1,m.slot||'—',m.terrain||'—',teamNames,scoreStr,ev?ev.name:'—',st];
+    }),
+    styles:{fontSize:7.5,cellPadding:2.5},headStyles:{fillColor:PDF_ORANGE,textColor:255},
+    alternateRowStyles:{fillColor:PDF_GRAY},margin:{left:14,right:14}});
+  pdfFooter(doc); doc.save('olympiades_planning.pdf'); showToast('PDF Planning ✓','success');
+}
+
+function downloadTeamSheetsPDF(){
+  if(!teams.length){showToast('Aucune équipe','error');return;}
+  const{jsPDF}=window.jspdf; const doc=new jsPDF();
+  teams.forEach((t,ti)=>{
+    if(ti>0) doc.addPage();
+    let y=pdfHeader(doc,`FICHE : ${t.name.toUpperCase()}`,`Joueurs : ${t.players.join(', ')||'—'}`);
+    const tm=matches.filter(m=>m.teams.includes(t.id)).sort((a,b)=>(a.slot||'').localeCompare(b.slot||''));
+    if(!tm.length){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text('Aucun match.',14,y);return;}
+    doc.autoTable({startY:y,head:[['#','Heure','Terrain','Adversaires','Mon score','Résultat']],
+      body:tm.map((m,i)=>{
+        const ev=m.eventId?getEvent(m.eventId):null;
+        const others=m.teams.filter(tid=>tid!==t.id).map(tid=>getTeam(tid).name).join(', ');
+        const myPts=m.scores?m.scores[t.id]:null;
+        const winners=isMatchDone(m)?matchWinners(m):[];
+        const res=!isMatchDone(m)?'En attente':winners.length>1?'= Égalité':winners.includes(t.id)?'✓ Victoire':'✗ Défaite';
+        return[i+1,m.slot||'—',m.terrain||'—',others,myPts??'—',res];
+      }),
+      styles:{fontSize:8,cellPadding:2.5},headStyles:{fillColor:PDF_BLUE,textColor:255},
+      alternateRowStyles:{fillColor:PDF_GRAY},margin:{left:14,right:14}});
+  });
+  pdfFooter(doc); doc.save('olympiades_fiches_equipes.pdf'); showToast('Fiches équipes ✓','success');
+}
+
+function downloadRulesAllPDF(){
+  const{jsPDF}=window.jspdf; const doc=new jsPDF();
+  let y=pdfHeader(doc,'OLYMPIADES — RÈGLES',`${EVENTS.length} épreuves`);
+  EVENTS.forEach((ev,ei)=>{
+    if(ei>0&&y>248){doc.addPage();y=18;}
+    doc.setFillColor(...PDF_BLUE);doc.roundedRect(14,y-4,182,9,1.5,1.5,'F');
+    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(10);
+    doc.text(`${ev.name.toUpperCase()}  ·  ${CAT_LABELS[ev.cat]}  ·  ${ev.dur}`,16,y+2);
+    y+=13;
+    doc.setTextColor(80,80,80);doc.setFont('helvetica','normal');doc.setFontSize(8.5);
+    const dl=doc.splitTextToSize(ev.desc,182);doc.text(dl,14,y);y+=dl.length*4+3;
+    ev.rules.forEach(r=>{
+      if(y>275){doc.addPage();y=18;}
+      doc.setFillColor(...PDF_ORANGE);doc.circle(17.5,y-1.5,1.5,'F');
+      const rl=doc.splitTextToSize(r,168);doc.setTextColor(30,30,30);doc.text(rl,21,y);y+=rl.length*4+2;
+    });
+    if(y>270){doc.addPage();y=18;}
+    doc.setFillColor(232,245,233);doc.roundedRect(14,y,182,9,1.5,1.5,'F');
+    doc.setTextColor(...PDF_GREEN);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text('SCORE : ',16,y+6);
+    doc.setFont('helvetica','normal');doc.setTextColor(30,30,30);
+    doc.text(doc.splitTextToSize(ev.scoring,155),34,y+6);y+=14;
+  });
+  pdfFooter(doc);doc.save('olympiades_regles_toutes.pdf');showToast('PDF Règles ✓','success');
+}
+function downloadEventRulesPDF(eventId){
+  const ev=EVENTS.find(e=>e.id===eventId);if(!ev)return;
+  const{jsPDF}=window.jspdf;const doc=new jsPDF();
+  let y=pdfHeader(doc,ev.name.toUpperCase(),`${CAT_LABELS[ev.cat]} · ${ENV_LABELS[ev.env]} · ${ev.dur}`);
+  doc.setTextColor(70,70,70);doc.setFont('helvetica','normal');doc.setFontSize(9.5);
+  const dl=doc.splitTextToSize(ev.desc,182);doc.text(dl,14,y);y+=dl.length*5+8;
+  doc.setTextColor(...PDF_BLUE);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('RÈGLES DU JEU',14,y);y+=7;
+  ev.rules.forEach(r=>{
+    if(y>265){doc.addPage();y=20;}
+    doc.setFillColor(...PDF_ORANGE);doc.circle(18,y-2,2,'F');
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(30,30,30);
+    const rl=doc.splitTextToSize(r,168);doc.text(rl,23,y);y+=rl.length*5+3;
+  });
+  if(y>265){doc.addPage();y=20;}
+  doc.setFillColor(232,245,233);doc.roundedRect(14,y-3,182,14,3,3,'F');
+  doc.setTextColor(...PDF_GREEN);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('SCORE : ',17,y+5);
+  doc.setFont('helvetica','normal');doc.setTextColor(30,30,30);doc.text(doc.splitTextToSize(ev.scoring,150),38,y+5);
+  doc.setFontSize(7);doc.setTextColor(160);doc.text(`Olympiades · ${ev.name}`,14,290);
+  doc.save(`regle_${ev.id}.pdf`);showToast(`Règles de ${ev.name} ✓`,'success');
+}
+function downloadCurrentRulesPDF(){if(currentRulesEvent) downloadEventRulesPDF(currentRulesEvent.id);}
+
+function downloadRankingPDF(){
+  const{jsPDF}=window.jspdf; const doc=new jsPDF();
+  let y=pdfHeader(doc,'OLYMPIADES — CLASSEMENT COMPLET',`Généré le ${new Date().toLocaleDateString('fr-FR')} · ${teams.length} équipes`);
+
+  const sorted=computeStats();
+  // General table
+  doc.setTextColor(...PDF_BLUE);doc.setFont('helvetica','bold');doc.setFontSize(11);
+  doc.text('CLASSEMENT GÉNÉRAL',14,y);y+=5;
+  doc.autoTable({startY:y,
+    head:[['#','Équipe','V','D','N','Pts sport','Bonus','Total','Moy']],
+    body:sorted.map((t,i)=>[i<3?['🥇','🥈','🥉'][i]:i+1,t.name,t.wins,t.losses,t.draws,t.pts,t.bonusTotal>0?'+'+t.bonusTotal:'—',t.totalWithBonus,t.avg.toFixed(1)]),
+    styles:{fontSize:8.5,cellPadding:2.5},headStyles:{fillColor:PDF_BLUE,textColor:255},
+    alternateRowStyles:{fillColor:PDF_GRAY},margin:{left:14,right:14}});
+  y=doc.lastAutoTable.finalY+10;
+
+  // Per-event rankings
+  const played=matches.filter(m=>isMatchDone(m));
+  const eventsWithResults=[...new Set(played.filter(m=>m.eventId).map(m=>m.eventId))];
+
+  eventsWithResults.forEach(evId=>{
+    const ev=getEvent(evId); if(!ev) return;
+    const evMatches=played.filter(m=>m.eventId===evId);
+    const evStats={};
+    teams.forEach(t=>{ evStats[t.id]={pts:0,wins:0,losses:0,draws:0,played:0}; });
+    evMatches.forEach(m=>{
+      const winners=matchWinners(m); const isDraw=winners.length>1;
+      m.teams.forEach(tid=>{
+        if(!evStats[tid]) return;
+        evStats[tid].pts+=Number(m.scores[tid]||0); evStats[tid].played++;
+        if(isDraw) evStats[tid].draws++;
+        else if(winners.includes(tid)) evStats[tid].wins++;
+        else evStats[tid].losses++;
+      });
+    });
+    const evSorted=teams.filter(t=>evStats[t.id]&&evStats[t.id].played>0)
+      .sort((a,b)=>evStats[b.id].wins-evStats[a.id].wins||evStats[b.id].pts-evStats[a.id].pts);
+    if(!evSorted.length) return;
+
+    if(y>220){doc.addPage();y=20;}
+    doc.setTextColor(...PDF_BLUE);doc.setFont('helvetica','bold');doc.setFontSize(10);
+    doc.text(`${ev.name.toUpperCase()}  ·  ${CAT_LABELS[ev.cat]}`,14,y);y+=4;
+    doc.autoTable({startY:y,
+      head:[['#','Équipe','V','D','N','Pts','Matchs']],
+      body:evSorted.map((t,ri)=>[ri<3?['🥇','🥈','🥉'][ri]:ri+1,t.name,evStats[t.id].wins,evStats[t.id].losses,evStats[t.id].draws,evStats[t.id].pts,evStats[t.id].played]),
+      styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:PDF_ORANGE,textColor:255},
+      alternateRowStyles:{fillColor:PDF_GRAY},margin:{left:14,right:14}});
+    y=doc.lastAutoTable.finalY+8;
+  });
+
+  pdfFooter(doc);
+  doc.save('olympiades_classement.pdf');
+  showToast('PDF Classement ✓','success');
+}
+
+
+function downloadScoresPDF(){
+  const{jsPDF}=window.jspdf;const doc=new jsPDF();
+  let y=pdfHeader(doc,'OLYMPIADES — SCORES ACTUELS',`${new Date().toLocaleString('fr-FR')} · ${matches.filter(m=>isMatchDone(m)).length}/${matches.length} matchs terminés`);
+  // Group by event
+  const byEvent={};
+  matches.forEach(m=>{
+    const key=m.eventId||'__none__';
+    if(!byEvent[key]) byEvent[key]=[];
+    byEvent[key].push(m);
+  });
+  Object.entries(byEvent).forEach(([evId,ms])=>{
+    if(y>240){doc.addPage();y=20;}
+    const ev=evId!=='__none__'?getEvent(evId):null;
+    if(ev){
+      doc.setFillColor(...PDF_BLUE);doc.roundedRect(14,y-4,182,8,1.5,1.5,'F');
+      doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(10);
+      doc.text(`${ev.name.toUpperCase()}`,16,y+1);y+=12;
+    }
+    doc.autoTable({startY:y,
+      head:[['Équipes','Score','Statut','Terrain','Heure']],
+      body:ms.map(m=>{
+        const teamNames=m.teams.map(tid=>getTeam(tid).name).join(' vs ');
+        const scoreStr=m.teams.map(tid=>m.scores?m.scores[tid]??'—':'—').join(' : ');
+        const st={pending:'⏳ En attente',ongoing:'▶️ En cours',done:'✅ Terminé'}[m.status||'pending'];
+        const winners=isMatchDone(m)?matchWinners(m):[];
+        const winStr=winners.length===1?`🏆 ${getTeam(winners[0]).name}`:winners.length>1?'Égalité':'';
+        return[teamNames+'\n'+winStr,scoreStr,st,m.terrain||'—',m.slot||'—'];
+      }),
+      styles:{fontSize:8,cellPadding:2.5},
+      headStyles:{fillColor:PDF_ORANGE,textColor:255},
+      alternateRowStyles:{fillColor:PDF_GRAY},
+      columnStyles:{1:{halign:'center',fontStyle:'bold'}},
+      margin:{left:14,right:14}});
+    y=doc.lastAutoTable.finalY+8;
+  });
+  pdfFooter(doc);doc.save('olympiades_scores.pdf');showToast('PDF Scores ✓','success');
+}
+
+function printPlanning(){window.print();}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER ALL
+// ═══════════════════════════════════════════════════════
+function renderAll(){
+  renderTeams(); renderReco(); renderTerrains(); renderMatches();
+  renderEventsLibrary(); updateEventsNeededInfo(); updateFormatInfo();
+  renderPlanningGrid(); renderBonusTable();
+  if(document.getElementById('tab-scores')?.classList.contains('active')) renderScoresTab();
+  if(document.getElementById('scoreboard-view')?.classList.contains('open')) updateScoreboard();
+  if(sessionCode){
+    document.getElementById('session-code-display').textContent=sessionCode;
+    document.getElementById('sync-status-badge').textContent='🔥 '+sessionCode;
+    document.getElementById('sync-status-badge').classList.add('connected');
+  }
+  selectFormat(tournamentFormat);
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+loadFromLocalStorage();
+renderAll();
+updateSyncIndicator('wait','⏳ Firebase en cours d\'initialisation…');
+
+window.addEventListener('firebase-ready',()=>{
+  _fbReady=true;
+  updateFirebaseStatus('ok','✅ Firebase connecté — en attente d\'un code de session');
+  if(sessionCode) subscribeFirebase(sessionCode);
+});
+if(window._firebaseReady){
+  _fbReady=true;
+  updateFirebaseStatus('ok','✅ Firebase connecté');
+  if(sessionCode) subscribeFirebase(sessionCode);
+}
+
+setInterval(()=>persistState(),30000);
+setInterval(()=>{ if(document.getElementById('scoreboard-view')?.classList.contains('open')) updateScoreboard(); },3000);
+
+</script>
+</body>
+</html>
